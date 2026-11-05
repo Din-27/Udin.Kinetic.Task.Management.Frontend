@@ -2384,8 +2384,32 @@ export function useAppState() {
       });
     }
 
+    // Helper fetch dengan retry untuk mengantisipasi Neon Database Cold Start (sleep mode)
+    const fetchWithRetry = async (url: string, options: RequestInit, retries = 2, delayMs = 1200): Promise<Response> => {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          const res = await fetch(url, options);
+          if (res.ok) return res;
+          if (res.status >= 500 && attempt < retries) {
+            console.warn(`[Neon Wakeup Retry ${attempt + 1}] Retrying ${url}...`);
+            await new Promise((r) => setTimeout(r, delayMs));
+            continue;
+          }
+          return res;
+        } catch (err) {
+          if (attempt < retries) {
+            console.warn(`[Neon Network Retry ${attempt + 1}] Retrying ${url}...`);
+            await new Promise((r) => setTimeout(r, delayMs));
+            continue;
+          }
+          throw err;
+        }
+      }
+      return fetch(url, options);
+    };
+
     try {
-      fetch("/api/workspaces", {
+      const wsRes = await fetchWithRetry("/api/workspaces", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -2400,45 +2424,41 @@ export function useAppState() {
             avatar: creatorUser.avatar,
           },
         }),
-      })
-        .then(() => {
-          return fetch("/api/projects", {
+      });
+
+      if (wsRes.ok) {
+        await fetchWithRetry("/api/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id: defaultProj.id,
+            name: defaultProj.name,
+            description: defaultProj.description,
+            color: defaultProj.color,
+            icon: defaultProj.icon,
+            workspaceId: newWs.id,
+          }),
+        }).catch((e) => console.warn("Failed to persist default project:", e));
+
+        if (firstTask) {
+          await fetchWithRetry("/api/tasks", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              id: defaultProj.id,
-              name: defaultProj.name,
-              description: defaultProj.description,
-              color: defaultProj.color,
-              icon: defaultProj.icon,
-              workspaceId: newWs.id,
+              id: firstTask.id,
+              title: firstTask.title,
+              description: firstTask.description,
+              status: firstTask.status,
+              priority: firstTask.priority,
+              projectId: defaultProj.id,
+              creatorId: creatorUser.id,
+              assigneeId: creatorUser.id,
             }),
-          });
-        })
-        .then(() => {
-          if (firstTask) {
-            return fetch("/api/tasks", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                id: firstTask.id,
-                title: firstTask.title,
-                description: firstTask.description,
-                status: firstTask.status,
-                priority: firstTask.priority,
-                projectId: defaultProj.id,
-                creatorId: creatorUser.id,
-                assigneeId: creatorUser.id,
-              }),
-            });
-          }
-        })
-        .catch((e) =>
-          console.warn(
-            "Failed to persist workspace, project, or task to DB:",
-            e,
-          ),
-        );
+          }).catch((e) => console.warn("Failed to persist first task:", e));
+        }
+      } else {
+        console.warn("Backend workspace returned non-ok status:", wsRes.status);
+      }
     } catch (e) {
       console.warn("Workspace API error:", e);
     }

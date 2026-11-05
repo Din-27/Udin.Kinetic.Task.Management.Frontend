@@ -19,6 +19,7 @@ import {
   Users,
   Layers,
   MessageSquare,
+  Lightbulb,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -349,12 +350,14 @@ export function MarketingCarousel({ onSelectTab, onClose, isModal = false, isOpe
               {currentSlide.previewType === "whiteboard" && (
                 <div className="w-full h-full relative flex flex-col items-center justify-center">
                   {/* Sticky note 1 */}
-                  <div className="absolute top-2 left-3 bg-yellow-200/90 text-yellow-950 text-[10px] font-bold p-2.5 rounded-lg shadow-md rotate-[-4deg] max-w-[130px] border border-yellow-300">
-                    💡 Sprint Brainstorm: Auto-layout V2
+                  <div className="absolute top-2 left-3 bg-yellow-200/90 text-yellow-950 text-[10px] font-bold p-2.5 rounded-lg shadow-md rotate-[-4deg] max-w-[130px] border border-yellow-300 flex items-start gap-1">
+                    <Lightbulb className="h-3 w-3 text-yellow-700 shrink-0 mt-0.5" />
+                    <span>Sprint Brainstorm: Auto-layout V2</span>
                   </div>
                   {/* Sticky note 2 */}
-                  <div className="absolute bottom-4 right-4 bg-emerald-200/90 text-emerald-950 text-[10px] font-bold p-2.5 rounded-lg shadow-md rotate-[3deg] max-w-[140px] border border-emerald-300">
-                    ✅ Review Design UI Figma Selesai
+                  <div className="absolute bottom-4 right-4 bg-emerald-200/90 text-emerald-950 text-[10px] font-bold p-2.5 rounded-lg shadow-md rotate-[3deg] max-w-[140px] border border-emerald-300 flex items-start gap-1">
+                    <CheckCircle2 className="h-3 w-3 text-emerald-700 shrink-0 mt-0.5" />
+                    <span>Review Design UI Figma Selesai</span>
                   </div>
                   {/* Simulated multiplayer cursor 1 */}
                   <div className="absolute top-12 right-10 flex items-center gap-1 animate-bounce">
@@ -428,7 +431,10 @@ export function MarketingCarousel({ onSelectTab, onClose, isModal = false, isOpe
                     </div>
                   </div>
                   <div className="p-2 rounded-lg bg-background border border-border/80 text-[10px] font-medium flex items-center justify-between">
-                    <span>⚡ Konversi ke Task Kanban</span>
+                    <span className="flex items-center gap-1.5">
+                      <Zap className="h-3.5 w-3.5 text-amber-500" />
+                      <span>Konversi ke Task Kanban</span>
+                    </span>
                     <span className="text-purple-400 font-bold text-[9px]">Otomatis</span>
                   </div>
                 </div>

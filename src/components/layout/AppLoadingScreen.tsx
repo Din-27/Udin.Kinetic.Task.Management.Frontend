@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { Command } from "lucide-react";
 
 export function AppLoadingScreen() {
   return (
@@ -12,8 +13,8 @@ export function AppLoadingScreen() {
         {/* Animated logo mark with pulse */}
         <div className="relative">
           <div className="absolute -inset-3 rounded-2xl bg-indigo-500/25 blur-xl animate-pulse" />
-          <div className="relative h-14 w-14 rounded-2xl bg-foreground text-background font-mono font-bold text-2xl flex items-center justify-center shadow-2xl border border-border/40">
-            ⌘
+          <div className="relative h-14 w-14 rounded-2xl bg-foreground text-background flex items-center justify-center shadow-2xl border border-border/40">
+            <Command className="h-7 w-7 text-background" />
           </div>
         </div>
 

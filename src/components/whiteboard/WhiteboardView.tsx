@@ -27,6 +27,9 @@ import {
   Pencil,
   MoreVertical,
   Loader2,
+  Palette,
+  RotateCcw,
+  Minus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,7 +55,7 @@ import {
 
 export interface WhiteboardElement {
   id: string;
-  type: "sticky" | "rect" | "circle" | "diamond" | "text" | "arrow" | "freehand";
+  type: "sticky" | "rect" | "circle" | "diamond" | "text" | "arrow" | "line" | "freehand";
   x: number;
   y: number;
   width: number;
@@ -151,50 +154,48 @@ function getUserColor(userId: string): string {
   return USER_COLORS[index];
 }
 
-const DEFAULT_ELEMENTS: WhiteboardElement[] = [
-  {
-    id: "el-welcome",
-    type: "sticky",
-    x: 100,
-    y: 80,
-    width: 240,
-    height: 180,
-    content: "👋 Selamat datang di Papan Tulis Streaming!\n\nSemua perubahan tersinkronkan seketika. Gerakkan kursor atau ketik catatan untuk melihat kolaborasi langsung ala Figma.",
-    color: "#fef08a",
-    textColor: "#713f12",
-  },
-  {
-    id: "el-feature-1",
-    type: "rect",
-    x: 400,
-    y: 80,
-    width: 220,
-    height: 140,
-    content: "🎯 Multiplayer Cursor\nSetiap kursor pengguna bergerak secara real-time dengan label nama dan warna unik.",
-    color: "#bae6fd",
-    textColor: "#0c4a6e",
-  },
-  {
-    id: "el-feature-2",
-    type: "diamond",
-    x: 420,
-    y: 280,
-    width: 180,
-    height: 140,
-    content: "💬 Kolom Komentar\nAda pertanyaan? Tulis di sidebar komentar!",
-    color: "#bbf7d0",
-    textColor: "#14532d",
-  },
-  {
-    id: "el-arrow-1",
-    type: "arrow",
-    x: 340,
-    y: 150,
-    width: 60,
-    height: 2,
-    color: "#6366f1",
-  },
-];
+function getStrokeColor(colorHex: string): string {
+  if (!colorHex) return "#6366f1";
+  const match = PALETTE_COLORS.find(
+    (c) => c.bg.toLowerCase() === colorHex.toLowerCase()
+  );
+  if (match) {
+    if (match.bg.toLowerCase() === "#ffffff") return "#475569";
+    return match.border || match.text || colorHex;
+  }
+  return colorHex;
+}
+
+function getTextColor(colorHex: string): string {
+  if (!colorHex) return "#0f172a";
+  const match = PALETTE_COLORS.find(
+    (c) => c.bg.toLowerCase() === colorHex.toLowerCase()
+  );
+  if (match) return match.text;
+  const darks = ["#1e293b", "#0f172a", "#000000", "#111827", "#18181b", "#09090b"];
+  if (darks.includes(colorHex.toLowerCase())) return "#f8fafc";
+  return "#0f172a";
+}
+
+function getSvgPathFromPoints(points?: Array<{ x: number; y: number }>): string {
+  if (!points || points.length === 0) return "";
+  if (points.length === 1) {
+    return `M ${points[0].x} ${points[0].y} L ${points[0].x + 0.1} ${points[0].y + 0.1}`;
+  }
+  if (points.length === 2) {
+    return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`;
+  }
+  let path = `M ${points[0].x} ${points[0].y}`;
+  for (let i = 1; i < points.length - 1; i++) {
+    const xc = (points[i].x + points[i + 1].x) / 2;
+    const yc = (points[i].y + points[i + 1].y) / 2;
+    path += ` Q ${points[i].x} ${points[i].y}, ${xc} ${yc}`;
+  }
+  path += ` L ${points[points.length - 1].x} ${points[points.length - 1].y}`;
+  return path;
+}
+
+const DEFAULT_ELEMENTS: WhiteboardElement[] = [];
 
 export const generateUniqueWhiteboardId = () =>
   `wb-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -264,7 +265,7 @@ export function WhiteboardView({
   const [elements, setElements] = useState<WhiteboardElement[]>(DEFAULT_ELEMENTS);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [activeTool, setActiveTool] = useState<
-    "select" | "sticky" | "rect" | "circle" | "diamond" | "text" | "arrow" | "pen" | "eraser"
+    "select" | "sticky" | "rect" | "circle" | "diamond" | "text" | "arrow" | "line" | "pen" | "eraser"
   >("select");
   const [selectedColor, setSelectedColor] = useState<string>("#fef08a");
 
@@ -284,7 +285,6 @@ export function WhiteboardView({
         return updated;
       });
       if (selectedElementId === elemId) setSelectedElementId(null);
-      toastAlert({ title: "Elemen terhapus", variant: "info" });
     },
     [whiteboardId, currentUser.id, selectedElementId]
   );
@@ -320,6 +320,169 @@ export function WhiteboardView({
 
   // Container canvas reference
   const canvasRef = useRef<HTMLDivElement>(null);
+
+  // Zoom & Pan References for Wheel Event
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const panRef = useRef(pan);
+  panRef.current = pan;
+
+  const handleZoomIn = useCallback(() => {
+    setZoom((z) => Math.min(3.0, Number((z + 0.15).toFixed(2))));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((z) => Math.max(0.2, Number((z - 0.15).toFixed(2))));
+  }, []);
+
+  const handleResetZoom = useCallback(() => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  }, []);
+
+  // Native non-passive wheel listener for smooth zooming into cursor & panning
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      const currentZoom = zoomRef.current;
+      const currentPan = panRef.current;
+
+      if (e.ctrlKey || e.metaKey) {
+        // Zoom in/out centered at mouse pointer
+        const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+        const nextZoom = Math.min(3.0, Math.max(0.2, Number((currentZoom * zoomFactor).toFixed(2))));
+        const mouseCanvasX = (mouseX - currentPan.x) / currentZoom;
+        const mouseCanvasY = (mouseY - currentPan.y) / currentZoom;
+        const nextPanX = Math.round(mouseX - mouseCanvasX * nextZoom);
+        const nextPanY = Math.round(mouseY - mouseCanvasY * nextZoom);
+
+        setZoom(nextZoom);
+        setPan({ x: nextPanX, y: nextPanY });
+      } else {
+        // Pan canvas
+        setPan({
+          x: currentPan.x - e.deltaX,
+          y: currentPan.y - e.deltaY,
+        });
+      }
+    };
+
+    canvas.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      canvas.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
+
+  // Sinkronisasi perubahan warna ke elemen yang sedang aktif & update default color
+  const handleChangeColor = useCallback(
+    (newColor: string) => {
+      setSelectedColor(newColor);
+      if (selectedElementId) {
+        setElements((prev) => {
+          const updated = prev.map((el) => {
+            if (el.id !== selectedElementId) return el;
+            if (el.type === "arrow" || el.type === "freehand" || el.type === "line") {
+              return { ...el, color: getStrokeColor(newColor) };
+            }
+            if (el.type === "text") {
+              const txtColor =
+                newColor.toLowerCase() === "#ffffff"
+                  ? "#0f172a"
+                  : getTextColor(newColor) === "#f8fafc"
+                  ? newColor
+                  : getStrokeColor(newColor);
+              return { ...el, textColor: txtColor };
+            }
+            return {
+              ...el,
+              color: newColor,
+              textColor: getTextColor(newColor),
+            };
+          });
+          const socket = getSocket();
+          if (socket) {
+            socket.emit("whiteboard-change", {
+              whiteboardId,
+              elements: updated,
+              senderId: currentUser.id,
+            });
+          }
+          return updated;
+        });
+      }
+    },
+    [selectedElementId, whiteboardId, currentUser.id]
+  );
+
+  // Tool penghapus seperti pena biasa (scratch / drag to erase)
+  const [isErasing, setIsErasing] = useState<boolean>(false);
+
+  const eraseAt = useCallback(
+    (canvasX: number, canvasY: number, radius = 24) => {
+      setElements((prev) => {
+        const toDeleteIds = new Set<string>();
+
+        for (const el of prev) {
+          if (el.type === "arrow" || el.type === "line") {
+            const x1 = el.x;
+            const y1 = el.y;
+            const x2 = el.x + el.width;
+            const y2 = el.y + el.height;
+            const lengthSq = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+            if (lengthSq === 0) {
+              if (Math.hypot(canvasX - x1, canvasY - y1) <= radius) toDeleteIds.add(el.id);
+            } else {
+              const t = Math.max(
+                0,
+                Math.min(1, ((canvasX - x1) * (x2 - x1) + (canvasY - y1) * (y2 - y1)) / lengthSq)
+              );
+              const projX = x1 + t * (x2 - x1);
+              const projY = y1 + t * (y2 - y1);
+              if (Math.hypot(canvasX - projX, canvasY - projY) <= radius) {
+                toDeleteIds.add(el.id);
+              }
+            }
+          } else if (el.type === "freehand" && el.points && el.points.length > 0) {
+            if (el.points.some((pt) => Math.hypot(canvasX - pt.x, canvasY - pt.y) <= radius)) {
+              toDeleteIds.add(el.id);
+            }
+          } else {
+            // Shapes & Sticky Notes & Text
+            const inBounds =
+              canvasX >= el.x - radius &&
+              canvasX <= el.x + el.width + radius &&
+              canvasY >= el.y - radius &&
+              canvasY <= el.y + el.height + radius;
+            if (inBounds) {
+              toDeleteIds.add(el.id);
+            }
+          }
+        }
+
+        if (toDeleteIds.size === 0) return prev;
+
+        const updated = prev.filter((el) => !toDeleteIds.has(el.id));
+        const socket = getSocket();
+        if (socket) {
+          socket.emit("whiteboard-change", {
+            whiteboardId,
+            elements: updated,
+            senderId: currentUser.id,
+          });
+        }
+        return updated;
+      });
+    },
+    [whiteboardId, currentUser.id]
+  );
 
   const queryClient = useQueryClient();
 
@@ -544,21 +707,30 @@ export function WhiteboardView({
         });
       }
 
-      // Handle freehand pen drawing
+      // Handle penghapus seperti pena biasa (scratch / drag to erase)
+      if (isErasing && activeTool === "eraser") {
+        eraseAt(canvasX, canvasY);
+      }
+
+      // Handle freehand pen drawing (langsung jadi garis mulus)
       if (isDrawing && activeTool === "pen") {
-        currentDrawingRef.current.push({ x: canvasX, y: canvasY });
-        setElements((prev) => {
-          const lastIdx = prev.findIndex((el) => el.id === "temp-drawing");
-          if (lastIdx >= 0) {
-            const next = [...prev];
-            next[lastIdx] = {
-              ...next[lastIdx],
-              points: [...currentDrawingRef.current],
-            };
-            return next;
-          }
-          return prev;
-        });
+        const pts = currentDrawingRef.current;
+        const lastPt = pts[pts.length - 1];
+        if (!lastPt || Math.hypot(canvasX - lastPt.x, canvasY - lastPt.y) >= 1.5) {
+          currentDrawingRef.current.push({ x: canvasX, y: canvasY });
+          setElements((prev) => {
+            const lastIdx = prev.findIndex((el) => el.id === "temp-drawing");
+            if (lastIdx >= 0) {
+              const next = [...prev];
+              next[lastIdx] = {
+                ...next[lastIdx],
+                points: [...currentDrawingRef.current],
+              };
+              return next;
+            }
+            return prev;
+          });
+        }
       }
 
       // Throttling pengiriman kursor multiplayer ~30ms
@@ -585,7 +757,9 @@ export function WhiteboardView({
       isDraggingElement,
       selectedElementId,
       isDrawing,
+      isErasing,
       activeTool,
+      eraseAt,
       whiteboardId,
       currentUser.id,
       currentUser.name,
@@ -607,8 +781,16 @@ export function WhiteboardView({
     const canvasX = (e.clientX - rect.left - pan.x) / zoom;
     const canvasY = (e.clientY - rect.top - pan.y) / zoom;
 
-    // Jika sedang dalam tool pembuatan shape baru
-    if (activeTool !== "select" && activeTool !== "pen") {
+    // Jika tool eraser, aktifkan drag-to-erase seperti pena penghapus biasa
+    if (activeTool === "eraser") {
+      setIsErasing(true);
+      eraseAt(canvasX, canvasY);
+      return;
+    }
+
+    // Jika sedang dalam tool pembuatan shape / line baru
+    const shapeTools = ["sticky", "rect", "circle", "diamond", "text", "arrow", "line"];
+    if (shapeTools.includes(activeTool)) {
       const newId = `el-${Date.now()}`;
       let newElem: WhiteboardElement;
 
@@ -622,7 +804,7 @@ export function WhiteboardView({
           height: 150,
           content: "Catatan baru...",
           color: selectedColor,
-          textColor: selectedColor === "#1e293b" ? "#f8fafc" : "#1e293b",
+          textColor: getTextColor(selectedColor),
         };
       } else if (activeTool === "rect") {
         newElem = {
@@ -634,7 +816,7 @@ export function WhiteboardView({
           height: 120,
           content: "Kotak Proses",
           color: selectedColor,
-          textColor: selectedColor === "#1e293b" ? "#f8fafc" : "#1e293b",
+          textColor: getTextColor(selectedColor),
         };
       } else if (activeTool === "circle") {
         newElem = {
@@ -646,7 +828,7 @@ export function WhiteboardView({
           height: 140,
           content: "Lingkaran",
           color: selectedColor,
-          textColor: selectedColor === "#1e293b" ? "#f8fafc" : "#1e293b",
+          textColor: getTextColor(selectedColor),
         };
       } else if (activeTool === "diamond") {
         newElem = {
@@ -658,9 +840,15 @@ export function WhiteboardView({
           height: 120,
           content: "Keputusan?",
           color: selectedColor,
-          textColor: selectedColor === "#1e293b" ? "#f8fafc" : "#1e293b",
+          textColor: getTextColor(selectedColor),
         };
       } else if (activeTool === "text") {
+        const txtColor =
+          selectedColor.toLowerCase() === "#ffffff"
+            ? "#0f172a"
+            : getTextColor(selectedColor) === "#f8fafc"
+            ? selectedColor
+            : getStrokeColor(selectedColor);
         newElem = {
           id: newId,
           type: "text",
@@ -670,10 +858,9 @@ export function WhiteboardView({
           height: 60,
           content: "Ketik teks di sini...",
           color: "transparent",
-          textColor: "#0f172a",
+          textColor: txtColor,
         };
-      } else {
-        // Arrow
+      } else if (activeTool === "arrow") {
         newElem = {
           id: newId,
           type: "arrow",
@@ -681,8 +868,21 @@ export function WhiteboardView({
           y: Math.round(canvasY),
           width: 120,
           height: 2,
-          color: "#6366f1",
+          color: getStrokeColor(selectedColor),
         };
+      } else if (activeTool === "line") {
+        newElem = {
+          id: newId,
+          type: "line",
+          x: Math.round(canvasX),
+          y: Math.round(canvasY),
+          width: 140,
+          height: 0,
+          color: getStrokeColor(selectedColor),
+          strokeWidth: 3,
+        };
+      } else {
+        return;
       }
 
       const updated = [...elements, newElem];
@@ -702,10 +902,13 @@ export function WhiteboardView({
       return;
     }
 
-    // Jika tool pen (drawing)
+    // Jika tool pen (drawing): langsung inisialisasi garis sejak titik pertama disentuhkan
     if (activeTool === "pen") {
       setIsDrawing(true);
-      currentDrawingRef.current = [{ x: canvasX, y: canvasY }];
+      currentDrawingRef.current = [
+        { x: canvasX, y: canvasY },
+        { x: canvasX + 0.1, y: canvasY + 0.1 },
+      ];
       const tempId = "temp-drawing";
       setElements((prev) => [
         ...prev,
@@ -716,9 +919,12 @@ export function WhiteboardView({
           y: 0,
           width: 0,
           height: 0,
-          color: myColor,
+          color: getStrokeColor(selectedColor),
           strokeWidth: 3,
-          points: [{ x: canvasX, y: canvasY }],
+          points: [
+            { x: canvasX, y: canvasY },
+            { x: canvasX + 0.1, y: canvasY + 0.1 },
+          ],
         },
       ]);
       return;
@@ -732,6 +938,9 @@ export function WhiteboardView({
   const handleMouseUp = () => {
     if (isPanning) {
       setIsPanning(false);
+    }
+    if (isErasing) {
+      setIsErasing(false);
     }
     if (isDraggingElement) {
       setIsDraggingElement(false);
@@ -766,32 +975,53 @@ export function WhiteboardView({
     }
   };
 
-  // Keyboard shortcut (Delete / Backspace untuk hapus element)
+  // Keyboard shortcuts (Zoom, Delete, Tool Selection)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.key === "Delete" || e.key === "Backspace") && selectedElementId) {
-        // Abaikan jika sedang mengetik di textarea / input komentar
-        const target = e.target as HTMLElement;
-        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+      // Zoom shortcuts: Ctrl + +, Ctrl + -, Ctrl + 0
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === "=" || e.key === "+") {
+          e.preventDefault();
+          handleZoomIn();
+          return;
+        }
+        if (e.key === "-" || e.key === "_") {
+          e.preventDefault();
+          handleZoomOut();
+          return;
+        }
+        if (e.key === "0") {
+          e.preventDefault();
+          handleResetZoom();
+          return;
+        }
+      }
 
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedElementId) {
         e.preventDefault();
         handleDeleteElement(selectedElementId);
         return;
       }
 
-      // Shortcut E untuk Penghapus dan V untuk Select
-      const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
-      if (e.key === "e" || e.key === "E") {
-        setActiveTool("eraser");
-        toastAlert({ title: "Tool Penghapus Aktif", variant: "info" });
-      } else if (e.key === "v" || e.key === "V") {
-        setActiveTool("select");
-      }
+      // Tool selection shortcuts
+      const k = e.key.toLowerCase();
+      if (k === "v") setActiveTool("select");
+      else if (k === "s") setActiveTool("sticky");
+      else if (k === "r") setActiveTool("rect");
+      else if (k === "c" || k === "o") setActiveTool("circle");
+      else if (k === "d") setActiveTool("diamond");
+      else if (k === "t") setActiveTool("text");
+      else if (k === "a") setActiveTool("arrow");
+      else if (k === "l") setActiveTool("line");
+      else if (k === "p") setActiveTool("pen");
+      else if (k === "e") setActiveTool("eraser");
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedElementId, handleDeleteElement]);
+  }, [selectedElementId, handleDeleteElement, handleZoomIn, handleZoomOut, handleResetZoom]);
 
   // Live Ketikan saat mengedit teks elemen
   const handleElementContentChange = (elemId: string, newContent: string) => {
@@ -1168,20 +1398,25 @@ export function WhiteboardView({
             <div className="flex items-center bg-muted/40 rounded-md border border-border/70 p-0.5">
               <button
                 type="button"
-                onClick={() => setZoom((z) => Math.max(0.4, Number((z - 0.1).toFixed(1))))}
+                onClick={handleZoomOut}
                 className="h-6 w-6 flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded transition-colors cursor-pointer"
-                title="Zoom Out"
+                title="Zoom Out (Ctrl + -)"
               >
                 <ZoomOut className="h-3 w-3" />
               </button>
-              <span className="text-[10px] font-mono font-medium px-1.5 min-w-[38px] text-center select-none">
-                {Math.round(zoom * 100)}%
-              </span>
               <button
                 type="button"
-                onClick={() => setZoom((z) => Math.min(2.5, Number((z + 0.1).toFixed(1))))}
+                onClick={handleResetZoom}
+                className="text-[10px] font-mono font-medium px-1.5 min-w-[38px] text-center select-none hover:bg-muted/60 rounded cursor-pointer"
+                title="Reset Zoom 100% (Ctrl + 0)"
+              >
+                {Math.round(zoom * 100)}%
+              </button>
+              <button
+                type="button"
+                onClick={handleZoomIn}
                 className="h-6 w-6 flex items-center justify-center hover:bg-muted text-muted-foreground hover:text-foreground rounded transition-colors cursor-pointer"
-                title="Zoom In"
+                title="Zoom In (Ctrl + +)"
               >
                 <ZoomIn className="h-3 w-3" />
               </button>
@@ -1300,11 +1535,11 @@ export function WhiteboardView({
             backgroundColor: "var(--background)",
             backgroundImage:
               "radial-gradient(circle, var(--muted-foreground) 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
+            backgroundSize: `${Math.round(24 * zoom)}px ${Math.round(24 * zoom)}px`,
             backgroundPosition: `${pan.x}px ${pan.y}px`,
           }}
         >
-          {/* CANVAS CONTENT LAYER (Transformed by Pan & Zoom) */}
+          {/* CANVAS CONTENT LAYER (Transformed by Pan & Zoom - Infinite Canvas) */}
           <div
             style={{
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
@@ -1312,18 +1547,39 @@ export function WhiteboardView({
               position: "absolute",
               top: 0,
               left: 0,
-              width: "5000px",
-              height: "5000px",
+              width: 0,
+              height: 0,
+              overflow: "visible",
             }}
           >
             {/* SVG Connecting Arrows / Lines & Freehand Drawings */}
             <svg
-              className="absolute top-0 left-0 w-full h-full pointer-events-none"
-              style={{ zIndex: 1 }}
+              className="absolute top-0 left-0 pointer-events-none"
+              style={{ zIndex: 1, overflow: "visible", width: "1px", height: "1px" }}
             >
               <defs>
+                {Array.from(
+                  new Set(
+                    elements
+                      .filter((el) => el.type === "arrow")
+                      .map((el) => el.color || "#6366f1")
+                  )
+                ).map((c) => (
+                  <marker
+                    key={c}
+                    id={`wb-arrow-${c.replace(/[^a-zA-Z0-9]/g, "")}`}
+                    viewBox="0 0 10 10"
+                    refX="6"
+                    refY="5"
+                    markerWidth="6"
+                    markerHeight="6"
+                    orient="auto-start-reverse"
+                  >
+                    <path d="M 0 1 L 8 5 L 0 9 z" fill={c} />
+                  </marker>
+                ))}
                 <marker
-                  id="wb-arrow"
+                  id="wb-arrow-selected"
                   viewBox="0 0 10 10"
                   refX="6"
                   refY="5"
@@ -1331,12 +1587,14 @@ export function WhiteboardView({
                   markerHeight="6"
                   orient="auto-start-reverse"
                 >
-                  <path d="M 0 1 L 8 5 L 0 9 z" fill="#6366f1" />
+                  <path d="M 0 1 L 8 5 L 0 9 z" fill="#4f46e5" />
                 </marker>
               </defs>
 
               {elements.map((el) => {
                 if (el.type === "arrow") {
+                  const isSelected = selectedElementId === el.id;
+                  const arrowColor = el.color || "#6366f1";
                   return (
                     <line
                       key={el.id}
@@ -1344,43 +1602,106 @@ export function WhiteboardView({
                       y1={el.y}
                       x2={el.x + el.width}
                       y2={el.y + el.height}
-                      stroke={el.color || "#6366f1"}
-                      strokeWidth={activeTool === "eraser" ? 8 : 3}
+                      stroke={isSelected ? "#4f46e5" : arrowColor}
+                      strokeWidth={isSelected ? 5 : activeTool === "eraser" ? 8 : 3}
                       strokeDasharray={el.strokeWidth === 1 ? "4,4" : undefined}
-                      markerEnd="url(#wb-arrow)"
-                      style={{ pointerEvents: activeTool === "eraser" ? "auto" : "none" }}
-                      className={activeTool === "eraser" ? "cursor-pointer hover:stroke-rose-500 hover:opacity-75 transition-colors" : ""}
+                      markerEnd={
+                        isSelected
+                          ? "url(#wb-arrow-selected)"
+                          : `url(#wb-arrow-${arrowColor.replace(/[^a-zA-Z0-9]/g, "")})`
+                      }
+                      style={{ pointerEvents: activeTool === "eraser" || activeTool === "select" ? "auto" : "none" }}
+                      className={
+                        activeTool === "eraser"
+                          ? "cursor-pointer hover:stroke-rose-500 hover:opacity-75 transition-colors"
+                          : activeTool === "select"
+                          ? "cursor-pointer hover:stroke-indigo-400 transition-colors"
+                          : ""
+                      }
                       onMouseDown={(e) => {
                         if (activeTool === "eraser") {
                           e.stopPropagation();
                           handleDeleteElement(el.id);
+                        } else if (activeTool === "select") {
+                          e.stopPropagation();
+                          setSelectedElementId(el.id);
+                          if (el.color) setSelectedColor(el.color);
                         }
                       }}
                     />
                   );
                 }
 
-                if (el.type === "freehand" && el.points && el.points.length > 1) {
-                  const pathData = el.points.reduce(
-                    (acc, pt, idx) =>
-                      idx === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`,
-                    ""
+                if (el.type === "line") {
+                  const isSelected = selectedElementId === el.id;
+                  const lineColor = el.color || "#6366f1";
+                  return (
+                    <line
+                      key={el.id}
+                      x1={el.x}
+                      y1={el.y}
+                      x2={el.x + el.width}
+                      y2={el.y + el.height}
+                      stroke={isSelected ? "#4f46e5" : lineColor}
+                      strokeWidth={isSelected ? 5 : activeTool === "eraser" ? 8 : (el.strokeWidth || 3)}
+                      strokeDasharray={el.strokeWidth === 1 ? "4,4" : undefined}
+                      strokeLinecap="round"
+                      style={{ pointerEvents: activeTool === "eraser" || activeTool === "select" ? "auto" : "none" }}
+                      className={
+                        activeTool === "eraser"
+                          ? "cursor-pointer hover:stroke-rose-500 hover:opacity-75 transition-colors"
+                          : activeTool === "select"
+                          ? "cursor-pointer hover:stroke-indigo-400 transition-colors"
+                          : ""
+                      }
+                      onMouseDown={(e) => {
+                        if (activeTool === "eraser") {
+                          e.stopPropagation();
+                          handleDeleteElement(el.id);
+                        } else if (activeTool === "select") {
+                          e.stopPropagation();
+                          setSelectedElementId(el.id);
+                          if (el.color) setSelectedColor(el.color);
+                        }
+                      }}
+                    />
                   );
+                }
+
+                if (el.type === "freehand" && el.points && el.points.length > 0) {
+                  const pathData = getSvgPathFromPoints(el.points);
+                  const isSelected = selectedElementId === el.id;
                   return (
                     <path
                       key={el.id}
                       d={pathData}
                       fill="none"
-                      stroke={el.color || "#6366f1"}
-                      strokeWidth={activeTool === "eraser" ? (el.strokeWidth || 3) + 6 : el.strokeWidth || 3}
+                      stroke={isSelected ? "#4f46e5" : el.color || "#6366f1"}
+                      strokeWidth={
+                        isSelected
+                          ? (el.strokeWidth || 3) + 2
+                          : activeTool === "eraser"
+                          ? (el.strokeWidth || 3) + 6
+                          : el.strokeWidth || 3
+                      }
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      style={{ pointerEvents: activeTool === "eraser" ? "auto" : "none" }}
-                      className={activeTool === "eraser" ? "cursor-pointer hover:stroke-rose-500 hover:opacity-75 transition-colors" : ""}
+                      style={{ pointerEvents: activeTool === "eraser" || activeTool === "select" ? "auto" : "none" }}
+                      className={
+                        activeTool === "eraser"
+                          ? "cursor-pointer hover:stroke-rose-500 hover:opacity-75 transition-colors"
+                          : activeTool === "select"
+                          ? "cursor-pointer hover:stroke-indigo-400 transition-colors"
+                          : ""
+                      }
                       onMouseDown={(e) => {
                         if (activeTool === "eraser") {
                           e.stopPropagation();
                           handleDeleteElement(el.id);
+                        } else if (activeTool === "select") {
+                          e.stopPropagation();
+                          setSelectedElementId(el.id);
+                          if (el.color) setSelectedColor(el.color);
                         }
                       }}
                     />
@@ -1392,7 +1713,7 @@ export function WhiteboardView({
 
             {/* SHAPES & STICKY NOTES */}
             {elements.map((elem) => {
-              if (elem.type === "arrow" || elem.type === "freehand") return null;
+              if (elem.type === "arrow" || elem.type === "freehand" || elem.type === "line") return null;
 
               const isSelected = selectedElementId === elem.id;
 
@@ -1406,6 +1727,11 @@ export function WhiteboardView({
                       return;
                     }
                     setSelectedElementId(elem.id);
+                    if (elem.color && elem.color !== "transparent") {
+                      setSelectedColor(elem.color);
+                    } else if (elem.textColor) {
+                      setSelectedColor(elem.textColor);
+                    }
                     if (activeTool === "select") {
                       setIsDraggingElement(true);
                       dragStartRef.current = {
@@ -1605,12 +1931,24 @@ export function WhiteboardView({
 
             <button
               type="button"
+              onClick={() => setActiveTool("line")}
+              className={`p-2 rounded-xl transition-all ${activeTool === "line"
+                  ? "bg-emerald-500 text-white shadow-md"
+                  : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                }`}
+              title="Garis Lurus (L)"
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTool("pen")}
               className={`p-2 rounded-xl transition-all ${activeTool === "pen"
                   ? "bg-emerald-500 text-white shadow-md"
                   : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                 }`}
-              title="Gambar Bebas / Pen (P)"
+              title="Pen Garis Bebas (P) - Menggambar langsung jadi garis"
             >
               <PenTool className="h-4 w-4" />
             </button>
@@ -1622,7 +1960,7 @@ export function WhiteboardView({
                   ? "bg-rose-500 text-white shadow-md scale-105"
                   : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                 }`}
-              title="Penghapus / Eraser (E) - Klik pada elemen atau garis untuk menghapus"
+              title="Penghapus / Eraser (E) - Geser untuk menghapus objek seperti pena"
             >
               <Eraser className="h-4 w-4" />
             </button>
@@ -1631,35 +1969,33 @@ export function WhiteboardView({
 
             {/* Color Swatches */}
             <div className="flex items-center gap-1 px-1">
-              {PALETTE_COLORS.slice(0, 6).map((c) => (
-                <button
-                  key={c.bg}
-                  type="button"
-                  onClick={() => {
-                    setSelectedColor(c.bg);
-                    if (selectedElementId) {
-                      setElements((prev) => {
-                        const updated = prev.map((el) =>
-                          el.id === selectedElementId ? { ...el, color: c.bg, textColor: c.text } : el
-                        );
-                        const socket = getSocket();
-                        if (socket) {
-                          socket.emit("whiteboard-change", {
-                            whiteboardId,
-                            elements: updated,
-                            senderId: currentUser.id,
-                          });
-                        }
-                        return updated;
-                      });
-                    }
-                  }}
-                  style={{ backgroundColor: c.bg, borderColor: c.border }}
-                  className={`h-5 w-5 rounded-full border transition-transform ${selectedColor === c.bg ? "scale-125 ring-2 ring-emerald-500" : "hover:scale-110"
+              {PALETTE_COLORS.map((c) => {
+                const isActive = selectedColor.toLowerCase() === c.bg.toLowerCase();
+                return (
+                  <button
+                    key={c.bg}
+                    type="button"
+                    onClick={() => handleChangeColor(c.bg)}
+                    style={{ backgroundColor: c.bg, borderColor: c.border }}
+                    className={`h-5 w-5 rounded-full border transition-transform cursor-pointer ${
+                      isActive ? "scale-125 ring-2 ring-emerald-500 shadow-xs" : "hover:scale-110"
                     }`}
-                  title={c.name}
+                    title={c.name}
+                  />
+                );
+              })}
+              {/* Custom Color Picker */}
+              <label
+                className="h-5 w-5 rounded-full border border-border/80 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform relative overflow-hidden bg-gradient-to-tr from-indigo-500 via-rose-500 to-amber-400"
+                title="Pilih Warna Kustom"
+              >
+                <input
+                  type="color"
+                  value={selectedColor.startsWith("#") ? selectedColor : "#6366f1"}
+                  onChange={(e) => handleChangeColor(e.target.value)}
+                  className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
                 />
-              ))}
+              </label>
             </div>
 
             {selectedElementId && (
@@ -1668,27 +2004,52 @@ export function WhiteboardView({
                 <button
                   type="button"
                   onClick={() => {
-                    setElements((prev) => {
-                      const updated = prev.filter((el) => el.id !== selectedElementId);
-                      const socket = getSocket();
-                      if (socket) {
-                        socket.emit("whiteboard-change", {
-                          whiteboardId,
-                          elements: updated,
-                          senderId: currentUser.id,
-                        });
-                      }
-                      return updated;
-                    });
-                    setSelectedElementId(null);
+                    handleDeleteElement(selectedElementId);
                   }}
-                  className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/10 transition-colors"
+                  className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                   title="Hapus Elemen (Del)"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </>
             )}
+          </div>
+
+          {/* FLOATING ZOOM CONTROLS (Bottom Left - Aman dari sidebar komentar di kanan) */}
+          <div className="absolute bottom-6 left-6 z-30 flex items-center gap-1 p-1 rounded-2xl bg-background/90 backdrop-blur-md border border-border/80 shadow-2xl">
+            <button
+              type="button"
+              onClick={handleZoomOut}
+              className="h-8 w-8 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all cursor-pointer"
+              title="Zoom Out (Ctrl + -)"
+            >
+              <ZoomOut className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleResetZoom}
+              className="text-xs font-mono font-medium px-2 py-1 min-w-[50px] text-center hover:bg-muted/80 rounded-lg text-foreground transition-all cursor-pointer select-none"
+              title="Reset Zoom 100% (Ctrl + 0)"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              className="h-8 w-8 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all cursor-pointer"
+              title="Zoom In (Ctrl + +)"
+            >
+              <ZoomIn className="h-4 w-4" />
+            </button>
+            <div className="h-4 w-px bg-border/80 mx-0.5" />
+            <button
+              type="button"
+              onClick={handleResetZoom}
+              className="h-8 w-8 flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all cursor-pointer"
+              title="Reset Tampilan Kanvas"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
 

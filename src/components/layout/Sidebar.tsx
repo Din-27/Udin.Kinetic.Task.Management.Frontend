@@ -26,6 +26,7 @@ import {
   Workflow,
   Presentation,
   X,
+  Command,
 } from "lucide-react";
 import { toastAlert } from "@/components/ui/alert-toast";
 import { isDevelopment } from "@/lib/env";
@@ -199,10 +200,10 @@ export function Sidebar({
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div
-                    className="h-7 w-7 rounded-md text-white flex items-center justify-center font-mono font-bold text-xs shadow-2xs tracking-tight transition-transform group-hover:scale-105 shrink-0"
+                    className="h-7 w-7 rounded-md text-white flex items-center justify-center shadow-2xs tracking-tight transition-transform group-hover:scale-105 shrink-0"
                     style={{ backgroundColor: wsColor }}
                   >
-                    ⌘
+                    <Command className="h-4 w-4" />
                   </div>
                   <div className="flex flex-col min-w-0">
                     <span className="text-xs font-semibold tracking-tight text-foreground truncate">
@@ -241,10 +242,10 @@ export function Sidebar({
                         <div className="flex items-center justify-between gap-2 w-full">
                           <div className="flex items-center gap-2 truncate">
                             <div
-                              className="h-3.5 w-3.5 rounded text-white flex items-center justify-center font-mono font-bold text-[8px] shrink-0"
+                              className="h-4 w-4 rounded text-white flex items-center justify-center shrink-0"
                               style={{ backgroundColor: ws.color || "#6366f1" }}
                             >
-                              ⌘
+                              <Command className="h-2.5 w-2.5" />
                             </div>
                             <div className="flex flex-col text-left truncate">
                               <span className="truncate">{ws.name}</span>

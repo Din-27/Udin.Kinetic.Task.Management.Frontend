@@ -22,6 +22,7 @@ import {
   Moon,
   Menu,
   X,
+  Command,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MarketingCarousel } from "@/components/marketing/MarketingCarousel";
@@ -77,8 +78,8 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
           <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <div className="relative shrink-0">
               <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 blur opacity-70" />
-              <div className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-foreground text-background font-mono font-bold text-base sm:text-lg flex items-center justify-center shadow-md">
-                ⌘
+              <div className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-foreground text-background flex items-center justify-center shadow-md">
+                <Command className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
             <div className="flex flex-col min-w-0">
@@ -547,7 +548,7 @@ export function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
       <footer className="w-full border-t border-border/60 bg-card/40 backdrop-blur-md py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <div className="flex items-center gap-2 font-mono">
-            <span>⌘ Kinetic Task Management Monolith</span>
+            <span className="flex items-center gap-1.5"><Command className="h-3.5 w-3.5" /> Kinetic Task Management Monolith</span>
             <span>•</span>
             <span className="flex items-center gap-1.5 text-emerald-400">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />

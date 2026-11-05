@@ -14,6 +14,7 @@ import {
 } from "@/types";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useBoardColumnsQuery } from "@/lib/hooks/useBoardColumnsQueries";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -721,22 +722,22 @@ export function TaskDetailDrawer({
           <section className="rounded-lg border border-border bg-card p-4 shadow-2xs space-y-3.5">
             <div className="flex items-center justify-between border-b border-border pb-2.5">
               <div className="flex items-center gap-2">
-                <Sliders className="h-3.5 w-3.5 text-muted-foreground" />
-                <h4 className="text-[11px] font-mono uppercase tracking-wider font-semibold text-foreground">
+                <Sliders className="h-4 w-4 text-muted-foreground" />
+                <h4 className="text-xs font-semibold text-foreground tracking-tight">
                   {t("task.properties", "Properti & Atribut")}
                 </h4>
               </div>
-              <span className="text-[10px] font-mono text-muted-foreground font-medium">
+              <Badge variant={task.completed ? "default" : "secondary"} className="text-[10px] h-5 px-2 font-normal">
                 {task.completed
                   ? `${t("task.status", "Status")}: ${t("task.completed", "Selesai")}`
                   : `${t("task.status", "Status")}: ${t("task.active", "Aktif")}`}
-              </span>
+              </Badge>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               {/* Status Cell */}
               <div className="flex items-center justify-between gap-2 p-2 rounded-md border border-border bg-muted/35 min-w-0">
-                <span className="text-foreground/90 flex items-center gap-1.5 font-medium shrink-0 text-[11px] sm:text-xs">
+                <span className="text-foreground/90 flex items-center gap-1.5 font-medium shrink-0 text-xs">
                   <StatusIcon status={task.status} size={13} />
                   <span>{t("task.status", "Status")}</span>
                 </span>
@@ -783,7 +784,7 @@ export function TaskDetailDrawer({
 
               {/* Priority Cell */}
               <div className="flex items-center justify-between gap-2 p-2 rounded-md border border-border bg-muted/35 min-w-0">
-                <span className="text-foreground/90 flex items-center gap-1.5 font-medium shrink-0 text-[11px] sm:text-xs">
+                <span className="text-foreground/90 flex items-center gap-1.5 font-medium shrink-0 text-xs">
                   <PriorityIcon priority={task.priority} size={13} />
                   <span>{t("task.priority", "Prioritas")}</span>
                 </span>
@@ -820,7 +821,7 @@ export function TaskDetailDrawer({
 
               {/* Assignee Cell (Penanggung Jawab / PIC) */}
               <div className="flex items-center justify-between gap-2 p-2 rounded-md border border-border bg-muted/35 min-w-0">
-                <span className="text-foreground/90 flex items-center gap-1.5 font-medium shrink-0 text-[11px] sm:text-xs">
+                <span className="text-foreground/90 flex items-center gap-1.5 font-medium shrink-0 text-xs">
                   <UserIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   <span>{t("task.assignee", "Penanggung Jawab")}</span>
                 </span>
@@ -880,13 +881,13 @@ export function TaskDetailDrawer({
 
               {/* Due Date Cell (Shadcn UI DatePicker) */}
               <div className="flex items-center justify-between gap-2 p-2 rounded-md border border-border bg-muted/35 min-w-0">
-                <div className="flex items-center gap-1.5 shrink-0 text-[11px] sm:text-xs">
+                <div className="flex items-center gap-1.5 shrink-0 text-xs">
                   <span className="text-foreground/90 flex items-center gap-1.5 font-medium">
                     <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <span>{t("task.dueDate", "Tenggat Waktu")}</span>
                   </span>
                   {task.dueDate && (
-                    <span className="hidden xl:inline-block font-mono text-[10px] text-muted-foreground font-medium">
+                    <span className="hidden xl:inline-block text-[11px] text-muted-foreground">
                       ({formatRelativeDate(task.dueDate)})
                     </span>
                   )}
@@ -908,7 +909,7 @@ export function TaskDetailDrawer({
 
               {/* Visibilitas Cell (Asana style Public / Private) */}
               <div className="flex items-center justify-between gap-2 p-2 rounded-md border border-border bg-muted/35 min-w-0 sm:col-span-2">
-                <span className="text-foreground/90 flex items-center gap-1.5 font-medium shrink-0 text-[11px] sm:text-xs">
+                <span className="text-foreground/90 flex items-center gap-1.5 font-medium shrink-0 text-xs">
                   {task.visibility === "PRIVATE" ? (
                     <Lock className="h-3.5 w-3.5 text-amber-500 shrink-0" />
                   ) : (
@@ -963,19 +964,21 @@ export function TaskDetailDrawer({
             {/* Tags & Labels Row */}
             <div className="border-t border-border/60 pt-3 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
                   <Tag className="h-3.5 w-3.5 text-muted-foreground" />
                   {t("task.tags", "Tags & Label")}
                 </span>
                 {!isViewer && (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setIsAddingTag(!isAddingTag)}
-                    className="text-[11px] font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted/60 transition-colors"
+                    className="h-6 text-xs px-2 gap-1 text-muted-foreground hover:text-foreground font-normal"
                   >
                     <Plus className="h-3 w-3" />
                     <span>{t("task.addTag", "Tambah Tag")}</span>
-                  </button>
+                  </Button>
                 )}
               </div>
 
@@ -985,26 +988,27 @@ export function TaskDetailDrawer({
                   task.tags.map((tag) => {
                     const colorStyle = getTagColor(tag);
                     return (
-                      <span
+                      <Badge
                         key={tag}
-                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border transition-all ${colorStyle.bg} ${colorStyle.text} ${colorStyle.border}`}
+                        variant="outline"
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-normal border transition-colors ${colorStyle.bg} ${colorStyle.text} ${colorStyle.border}`}
                       >
                         <span>{tag}</span>
                         {!isViewer && (
                           <button
                             type="button"
                             onClick={() => handleRemoveTag(tag)}
-                            className="rounded-full hover:bg-black/10 dark:hover:bg-white/10 p-0.5 transition-colors"
+                            className="rounded-full hover:bg-black/10 dark:hover:bg-white/10 p-0.5 transition-colors ml-0.5"
                             title={`Hapus tag ${tag}`}
                           >
                             <X className="h-2.5 w-2.5" />
                           </button>
                         )}
-                      </span>
+                      </Badge>
                     );
                   })
                 ) : (
-                  <span className="text-[11px] text-muted-foreground/70 italic">
+                  <span className="text-xs text-muted-foreground/70 italic">
                     {t("task.noTags", "Belum ada tag yang disematkan")}
                   </span>
                 )}
@@ -1012,7 +1016,7 @@ export function TaskDetailDrawer({
 
               {/* Tag Input & Quick Suggestions Popover */}
               {isAddingTag && !isViewer && (
-                <div className="p-2.5 rounded-lg border border-border/80 bg-background/95 shadow-md space-y-2 animate-fade-in">
+                <div className="p-3 rounded-lg border border-border bg-popover text-popover-foreground shadow-md space-y-2 animate-fade-in">
                   <div className="flex items-center gap-2">
                     <Input
                       autoFocus
@@ -1028,36 +1032,40 @@ export function TaskDetailDrawer({
                         }
                       }}
                       placeholder={t("task.tagPlaceholder", "Ketik nama tag lalu Enter...")}
-                      className="h-7 text-xs bg-muted/40"
+                      className="h-8 text-xs bg-muted/40"
                     />
                     <Button
                       size="sm"
                       onClick={() => handleAddTag(newTagInput)}
-                      className="h-7 px-2.5 text-xs"
+                      className="h-8 px-3 text-xs"
                     >
                       {t("common.create", "Tambah")}
                     </Button>
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon"
                       onClick={() => setIsAddingTag(false)}
-                      className="h-7 w-7 rounded flex items-center justify-center text-muted-foreground hover:text-foreground"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
                     >
                       <X className="h-3.5 w-3.5" />
-                    </button>
+                    </Button>
                   </div>
 
                   {/* Quick Tag Recommendations */}
-                  <div className="flex flex-wrap items-center gap-1 pt-1">
-                    <span className="text-[10px] text-muted-foreground font-mono">{t("task.suggestions", "Saran")}:</span>
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-xs text-muted-foreground font-normal">{t("task.suggestions", "Saran")}:</span>
                     {["Frontend", "Backend", "Design", "Bug", "Feature", "Database", "Mobile"].map((rec) => (
-                      <button
+                      <Button
                         key={rec}
                         type="button"
+                        variant="secondary"
+                        size="sm"
                         onClick={() => handleAddTag(rec)}
-                        className="text-[10px] px-1.5 py-0.5 rounded border border-border/60 bg-muted/30 hover:bg-muted/80 text-foreground transition-colors"
+                        className="h-5 text-[11px] px-2 py-0 font-normal rounded-full border border-border/50 hover:bg-muted"
                       >
                         +{rec}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -1067,19 +1075,21 @@ export function TaskDetailDrawer({
             {/* Collaborators Row (Asana style) */}
             <div className="border-t border-border/60 pt-3 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
                   <Users className="h-3.5 w-3.5 text-muted-foreground" />
                   {t("task.collaborators", "Kolaborator")}
                 </span>
                 {!isViewer && (
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
                     onClick={() => setIsAddingCollab(!isAddingCollab)}
-                    className="text-[11px] font-medium text-muted-foreground hover:text-foreground flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-muted/60 transition-colors"
+                    className="h-6 text-xs px-2 gap-1 text-muted-foreground hover:text-foreground font-normal"
                   >
                     <UserPlus className="h-3 w-3" />
                     <span>{t("task.addCollaborator", "Tambah Kolaborator")}</span>
-                  </button>
+                  </Button>
                 )}
               </div>
 
@@ -1090,9 +1100,10 @@ export function TaskDetailDrawer({
                     const collabUser = users.find((u) => u.id === cId);
                     if (!collabUser) return null;
                     return (
-                      <div
+                      <Badge
                         key={cId}
-                        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border border-border/80 bg-muted/40 text-foreground text-[11px] shadow-2xs group"
+                        variant="secondary"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-border/80 text-xs font-normal"
                       >
                         <Avatar
                           src={collabUser.avatar}
@@ -1100,22 +1111,22 @@ export function TaskDetailDrawer({
                           size="xs"
                           className="h-4 w-4 ring-1 ring-border text-[8px] shrink-0"
                         />
-                        <span className="font-medium">{collabUser.name}</span>
+                        <span className="font-medium text-foreground">{collabUser.name}</span>
                         {!isViewer && (
                           <button
                             type="button"
                             onClick={() => handleRemoveCollaborator(cId)}
-                            className="text-muted-foreground hover:text-rose-500 rounded-full p-0.5 transition-colors"
+                            className="text-muted-foreground hover:text-destructive rounded-full p-0.5 transition-colors ml-0.5"
                             title={`Hapus ${collabUser.name} dari kolaborator`}
                           >
                             <X className="h-2.5 w-2.5" />
                           </button>
                         )}
-                      </div>
+                      </Badge>
                     );
                   })
                 ) : (
-                  <span className="text-[11px] text-muted-foreground/70 italic">
+                  <span className="text-xs text-muted-foreground/70 italic">
                     {t("task.noCollaborators", "Belum ada kolaborator tambahan")}
                   </span>
                 )}
@@ -1123,34 +1134,37 @@ export function TaskDetailDrawer({
 
               {/* Collaborator Selector Dropdown */}
               {isAddingCollab && !isViewer && (
-                <div className="p-2.5 rounded-lg border border-border/80 bg-background/95 shadow-md space-y-2 animate-fade-in">
+                <div className="p-3 rounded-lg border border-border bg-popover text-popover-foreground shadow-md space-y-2 animate-fade-in">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] font-semibold text-foreground">
+                    <span className="text-xs font-medium text-foreground">
                       {t("task.selectMember", "Pilih Anggota Tim Workspace:")}
                     </span>
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
+                      size="icon"
                       onClick={() => setIsAddingCollab(false)}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="h-6 w-6 text-muted-foreground hover:text-foreground"
                     >
                       <X className="h-3.5 w-3.5" />
-                    </button>
+                    </Button>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto">
                     {users
                       .filter((u) => !task.collaboratorIds?.includes(u.id))
                       .map((u) => (
-                        <button
+                        <Button
                           key={u.id}
                           type="button"
+                          variant="ghost"
                           onClick={() => handleAddCollaborator(u.id)}
-                          className="flex items-center gap-2 p-1.5 rounded-md hover:bg-muted text-left transition-colors border border-transparent hover:border-border/60"
+                          className="h-auto flex items-center justify-start gap-2 p-2 rounded-md hover:bg-muted text-left transition-colors border border-transparent hover:border-border/60 w-full font-normal"
                         >
                           <Avatar
                             src={u.avatar}
                             fallback={u.name}
                             size="sm"
-                            className="h-5 w-5 ring-1 ring-border text-[9px]"
+                            className="h-6 w-6 ring-1 ring-border text-[9px] shrink-0"
                           />
                           <div className="min-w-0 flex-1">
                             <div className="text-xs font-medium text-foreground truncate">
@@ -1160,7 +1174,7 @@ export function TaskDetailDrawer({
                               {u.title || u.role}
                             </div>
                           </div>
-                        </button>
+                        </Button>
                       ))}
                   </div>
                 </div>

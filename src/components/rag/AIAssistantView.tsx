@@ -521,8 +521,8 @@ export function AIAssistantView({
         : `Jelaskan atau analisislah isi dokumen berikut:${docHeader}`;
 
       displayText = textToSend
-        ? `${textToSend}\n\n📎 *Lampiran Dokumen:* \`${attachedFile.name}\` (${Math.round(attachedFile.size / 1024) || 1} KB)`
-        : `📎 *Lampiran Dokumen:* \`${attachedFile.name}\` (${Math.round(attachedFile.size / 1024) || 1} KB)\n*(Menganalisis isi dokumen terlampir)*`;
+        ? `${textToSend}\n\n*Lampiran Dokumen:* \`${attachedFile.name}\` (${Math.round(attachedFile.size / 1024) || 1} KB)`
+        : `*Lampiran Dokumen:* \`${attachedFile.name}\` (${Math.round(attachedFile.size / 1024) || 1} KB)\n*(Menganalisis isi dokumen terlampir)*`;
     }
 
     const userMsg: AIMessage = {

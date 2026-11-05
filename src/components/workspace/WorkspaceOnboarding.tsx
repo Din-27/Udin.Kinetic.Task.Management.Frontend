@@ -28,6 +28,7 @@ import {
   LayoutGrid,
   Cpu,
   Loader2,
+  Command,
 } from "lucide-react";
 import {
   createJoinRequest,
@@ -54,7 +55,7 @@ export interface OnboardingData {
 
 interface WorkspaceOnboardingProps {
   currentUser: User;
-  onCreateWorkspace: (data: OnboardingData) => void;
+  onCreateWorkspace: (data: OnboardingData) => void | Promise<void>;
   onLogout: () => void;
   onJoinedWorkspace?: (workspace: Workspace) => void;
 }
@@ -315,23 +316,29 @@ export function WorkspaceOnboarding({
     setInviteEmails(inviteEmails.filter((e) => e !== emailToRemove));
   };
 
-  const handleFinishAll = () => {
+  const handleFinishAll = async () => {
     if (!name.trim()) {
       setCurrentPage(1);
       return;
     }
     setIsSubmitting(true);
-    onCreateWorkspace({
-      name: name.trim(),
-      slug: slug.trim() || undefined,
-      description: description.trim() || undefined,
-      color,
-      projectName: skipProject ? undefined : projectName.trim() || "General",
-      projectDescription: skipProject ? undefined : projectDesc.trim() || undefined,
-      projectIcon: skipProject ? undefined : projectIcon,
-      projectColor: skipProject ? undefined : projectColor,
-      inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
-    });
+    try {
+      await onCreateWorkspace({
+        name: name.trim(),
+        slug: slug.trim() || undefined,
+        description: description.trim() || undefined,
+        color,
+        projectName: skipProject ? undefined : projectName.trim() || "General",
+        projectDescription: skipProject ? undefined : projectDesc.trim() || undefined,
+        projectIcon: skipProject ? undefined : projectIcon,
+        projectColor: skipProject ? undefined : projectColor,
+        inviteEmails: inviteEmails.length > 0 ? inviteEmails : undefined,
+      });
+    } catch (err) {
+      console.error("Gagal membuat workspace:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -341,8 +348,8 @@ export function WorkspaceOnboarding({
       <div className="relative z-10 w-full max-w-lg space-y-6">
         {/* Brand & Welcome Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center h-11 w-11 rounded-xl bg-foreground text-background font-mono font-bold text-lg shadow-sm">
-            ⌘
+          <div className="inline-flex items-center justify-center h-11 w-11 rounded-xl bg-foreground text-background shadow-sm">
+            <Command className="h-5 w-5 text-background" />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Selamat Datang, {currentUser.name || "Rekan Kerja"}!

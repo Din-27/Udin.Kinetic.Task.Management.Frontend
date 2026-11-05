@@ -227,9 +227,9 @@ function renderInlineMarkdown(text: string): React.ReactNode {
     const [fullMatch, boldDelim, boldContent, codeContent, italicDelim, italicContent, strikeContent] = match;
 
     if (boldContent !== undefined) {
-      // Periksa apakah ini tag penanda khusus seperti //jawaban atau 💡 Jawaban:
+      // Periksa apakah ini tag penanda khusus seperti //jawaban atau Jawaban:
       const trimmedBold = boldContent.trim();
-      const isJawabanBadge = /^\/?\/?\s*jawaba?n:?$/i.test(trimmedBold) || trimmedBold === "💡 Jawaban:";
+      const isJawabanBadge = /^\/?\/?\s*jawaba?n:?$/i.test(trimmedBold) || trimmedBold.toLowerCase().endsWith("jawaban:");
 
       if (isJawabanBadge) {
         parts.push(

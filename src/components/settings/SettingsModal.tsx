@@ -28,6 +28,7 @@ import {
   Building,
   Palette,
   Mail,
+  Command,
 } from "lucide-react";
 
 export function SettingsModal({
@@ -105,8 +106,8 @@ export function SettingsModal({
           <div className="space-y-4">
             <div className="px-2 pt-1">
               <div className="flex items-center gap-2">
-                <div className="h-5 w-5 rounded bg-foreground text-background flex items-center justify-center font-mono font-bold text-[10px]">
-                  ⌘
+                <div className="h-5 w-5 rounded bg-foreground text-background flex items-center justify-center">
+                  <Command className="h-3 w-3" />
                 </div>
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80 font-mono">
                   {t("settings.title", "Settings")}

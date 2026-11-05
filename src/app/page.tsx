@@ -345,8 +345,11 @@ export default function AsanaApp() {
             </div>
           )}
 
-          {/* Interactive Onboarding Checklist for New Users */}
-          {currentNav !== "flowchart" && currentNav !== "whiteboard" && (
+          {/* Interactive Onboarding Checklist for New Users (hanya ditampilkan pada halaman board/project/tasks, tidak di Tanya AI, Chat, Flowchart, atau Whiteboard) */}
+          {currentNav !== "flowchart" &&
+            currentNav !== "whiteboard" &&
+            currentNav !== "ai-assistant" &&
+            currentNav !== "chat" && (
             <OnboardingChecklist
               workspaceName={workspace.name}
               tasksCount={workspaceTasks.length}

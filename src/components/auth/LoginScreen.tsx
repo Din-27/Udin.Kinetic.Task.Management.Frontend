@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { User } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Lock, Mail, ArrowRight, AlertCircle, Sparkles, Building } from "lucide-react";
+import { Lock, Mail, ArrowRight, ArrowLeft, Command, AlertCircle, Sparkles, Building } from "lucide-react";
 import { WorkspaceInvitation } from "@/lib/invitation-service";
 import { getDefaultAvatar } from "@/lib/utils";
 
@@ -131,14 +131,15 @@ export function LoginScreen({ onLogin, availableUsers, pendingInvitation, onBack
               <button
                 type="button"
                 onClick={onBackToHome}
-                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors px-2 py-1 rounded-md hover:bg-muted/50"
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors px-2 py-1 rounded-md hover:bg-muted/50"
               >
-                ← Kembali ke Beranda
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Kembali ke Beranda</span>
               </button>
             </div>
           )}
-          <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-foreground text-background font-mono font-bold text-base shadow-sm">
-            ⌘
+          <div className="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-foreground text-background shadow-sm">
+            <Command className="h-5 w-5" />
           </div>
           <h1 className="text-xl font-bold tracking-tight text-foreground">
             Sign in to Kinetic

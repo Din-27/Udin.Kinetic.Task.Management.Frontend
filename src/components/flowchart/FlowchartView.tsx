@@ -1881,12 +1881,12 @@ function FlowchartCanvas({
       const nodeCount = nodes.length;
       const edgeCount = edges.length;
 
-      let messageContent = `📊 **[Flowchart Shared]** ${title}\n`;
+      let messageContent = `**[Flowchart Shared]** ${title}\n`;
       messageContent += `*Diagram Alur Kerja: ${nodeCount} langkah proses, ${edgeCount} alur panah.*\n`;
       if (chatNote.trim()) {
-        messageContent += `💬 *Catatan:* ${chatNote.trim()}\n`;
+        messageContent += `*Catatan:* ${chatNote.trim()}\n`;
       }
-      messageContent += `🔗 Buka Diagram: ${shareLink}`;
+      messageContent += `Buka Diagram: ${shareLink}`;
 
       await shareFlowchartToChatMutation.mutateAsync({
         content: messageContent,
@@ -3381,6 +3381,12 @@ function FlowchartCanvas({
                   </>
                 )}
               </Button>
+            </div>
+
+            {/* Helper Hint: AI Create vs Canvas Delete */}
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground/80 px-2 pt-0.5">
+              <span className="flex items-center gap-1.5"><Sparkles className="h-3 w-3 text-purple-500 shrink-0" /> AI menghasilkan diagram alur baru dari deskripsi proses Anda.</span>
+              <span className="hidden sm:inline">Hapus shape/panah: klik elemen lalu tekan <kbd className="px-1 py-0.2 rounded bg-muted font-mono text-[9px] border border-border">Del</kbd> / <kbd className="px-1 py-0.2 rounded bg-muted font-mono text-[9px] border border-border">Backspace</kbd></span>
             </div>
           </div>
         ) : (

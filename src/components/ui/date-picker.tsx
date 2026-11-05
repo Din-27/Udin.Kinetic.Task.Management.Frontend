@@ -3,7 +3,7 @@
 import * as React from "react";
 import { format, isToday, isBefore, startOfToday } from "date-fns";
 import { id as idLocale } from "date-fns/locale";
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -191,7 +191,7 @@ export function DatePicker({
             <X className="h-3 w-3" />
           </span>
         ) : (
-          <span className="text-[10px] text-muted-foreground/50 shrink-0 ml-1">▼</span>
+          <ChevronDown className="h-3 w-3 text-muted-foreground/50 shrink-0 ml-1" />
         )}
       </button>
 

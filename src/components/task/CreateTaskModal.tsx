@@ -33,6 +33,7 @@ import {
   Plus,
   UserX,
   Loader2,
+  CornerDownLeft,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { PriorityIcon } from "@/components/ui/priority-icon";
@@ -505,8 +506,8 @@ export function CreateTaskModal({
               ) : (
                 <>
                   <span>{t("common.create", "Buat")} {t("common.newTask", "Task")}</span>
-                  <kbd className="hidden sm:inline-block font-mono text-[9px] opacity-70 px-1 rounded bg-background/20">
-                    ↵
+                  <kbd className="hidden sm:inline-flex items-center font-mono text-[9px] opacity-70 px-1 py-0.5 rounded bg-background/20">
+                    <CornerDownLeft className="h-2.5 w-2.5" />
                   </kbd>
                 </>
               )}
