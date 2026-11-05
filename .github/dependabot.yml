@@ -1,0 +1,42 @@
+version: 2
+updates:
+  # 1. Monitoring dependensi Node.js / npm (termasuk Prisma, NestJS, socket.io, dll.)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Asia/Jakarta"
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    # Menghindari major breaking change mendadak pada engine inti jika diinginkan
+    # ignore:
+    #   - dependency-name: "@prisma/*"
+    #     update-types: ["version-update:semver-major"]
+
+  # 2. Monitoring image Docker di Dockerfile (Node 24 Alpine, dll.)
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Asia/Jakarta"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(docker)"
+
+  # 3. Monitoring versi GitHub Actions (checkout, setup-buildx, login-action, appleboy ssh/scp, dll.)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "Asia/Jakarta"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci(actions)"
