@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { User, WORKSPACE_ACCENT_COLORS, Workspace } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,7 +117,7 @@ export function WorkspaceOnboarding({
   const updateJoinRequestMutation = useUpdateJoinRequestMutation();
 
   // Helper untuk navigasi saat join request disetujui
-  const handleApprovedJoin = async (approved: JoinRequest) => {
+  const handleApprovedJoin = useCallback(async (approved: JoinRequest) => {
     if (hasJoinedRef.current || !onJoinedWorkspace) return;
     hasJoinedRef.current = true;
 
@@ -126,7 +126,6 @@ export function WorkspaceOnboarding({
       const wsList = await fetchWorkspaces();
       targetWs = wsList.find((w) => w.id === approved.workspaceId) || null;
     } catch { }
-
 
     if (!targetWs) {
       targetWs = {
@@ -139,7 +138,7 @@ export function WorkspaceOnboarding({
     }
 
     onJoinedWorkspace(targetWs);
-  };
+  }, [onJoinedWorkspace]);
 
   // 1. Initial check: berjalan HANYA 1 kali saat component dimount
   useEffect(() => {
@@ -176,7 +175,7 @@ export function WorkspaceOnboarding({
     return () => {
       isMounted = false;
     };
-  }, [currentUser, onJoinedWorkspace]);
+  }, [currentUser, onJoinedWorkspace, handleApprovedJoin, updateJoinRequestMutation]);
 
   // 2. Polling: HANYA berjalan jika user sedang menunggu approval (joinRequestSent != null)
   useEffect(() => {
@@ -231,7 +230,7 @@ export function WorkspaceOnboarding({
       isMounted = false;
       clearInterval(interval);
     };
-  }, [currentUser, onJoinedWorkspace, joinRequestSent]);
+  }, [currentUser, onJoinedWorkspace, joinRequestSent, handleApprovedJoin, updateJoinRequestMutation]);
 
   const handleNameChange = (val: string) => {
     setName(val);

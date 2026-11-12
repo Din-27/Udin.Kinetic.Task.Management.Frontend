@@ -143,7 +143,7 @@ export function AIAssistantView({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper untuk membuat sesi baru
-  const createNewSession = (initialTaskId?: string): AIChatSession => {
+  const createNewSession = useCallback((initialTaskId?: string): AIChatSession => {
     const defaultTaskId = initialTaskId || (tasks.length > 0 ? tasks[0].id : "");
     const matchedTask = tasks.find((t) => t.id === defaultTaskId);
     const sessionTitle = matchedTask
@@ -166,7 +166,7 @@ export function AIAssistantView({
         },
       ],
     };
-  };
+  }, [tasks, currentUser?.name]);
 
   // 1. Inisialisasi: Sinkronkan Sesi dari TanStack Query (Database Neon) dengan fallback ke localStorage
   useEffect(() => {
@@ -213,7 +213,7 @@ export function AIAssistantView({
         });
       }
     }
-  }, [dbSessions, isSessionsLoading, currentUser?.id, userStorageKey]);
+  }, [dbSessions, isSessionsLoading, currentUser?.id, currentUser?.name, userStorageKey, createNewSession, createSessionMutation]);
 
   // 2. Simpan backup lokal ke localStorage setiap kali sessions berubah
   useEffect(() => {

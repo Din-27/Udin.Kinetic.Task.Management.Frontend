@@ -107,6 +107,8 @@ export function MembersTab({
   const rejectMutation = useRejectJoinRequestMutation();
   const revokeMutation = useRevokeInvitationMutation();
 
+  const activeJoinRequests = serverRequests !== undefined ? serverRequests : pendingJoinRequests;
+
   useEffect(() => {
     if (serverInvites) {
       setPendingInvites(serverInvites);
@@ -325,13 +327,13 @@ export function MembersTab({
               </div>
             </div>
           </div>
-        ) : pendingJoinRequests.length > 0 ? (
+        ) : activeJoinRequests.length > 0 ? (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3.5 space-y-2.5 animate-fade-in text-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4 text-amber-500" />
                 <span className="font-semibold text-foreground">
-                  Permintaan Bergabung / Approval ({pendingJoinRequests.length})
+                  Permintaan Bergabung / Approval ({activeJoinRequests.length})
                 </span>
               </div>
               <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-medium">
@@ -340,7 +342,7 @@ export function MembersTab({
             </div>
 
             <div className="space-y-2 divide-y divide-border/40">
-              {pendingJoinRequests.map((req) => (
+              {activeJoinRequests.map((req) => (
                 <div key={req.id} className="pt-2 first:pt-0 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-medium text-foreground truncate">{req.userName}</div>
