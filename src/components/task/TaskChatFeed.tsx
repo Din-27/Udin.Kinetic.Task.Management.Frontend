@@ -446,6 +446,7 @@ export function TaskChatFeed({
                             {/* 1. Image Attachment */}
                             {att.type === "image" && (
                               <div className="relative group rounded-md overflow-hidden border border-black/10 dark:border-white/10 bg-black/5">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={att.url}
                                   alt={att.name}

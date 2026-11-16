@@ -57,12 +57,9 @@ self.addEventListener("push", (event) => {
           dateOfArrival: Date.now(),
         },
       };
-      console.log('masuk sini ' + data.title + ' - ' + data.body);
 
       try {
-        console.log('masuk try', data.title, options)
-        await self.registration.showNotification(data.title, options)
-        console.log('selesai')
+        await self.registration.showNotification(data.title, options);
       } catch (err) {
         console.error("ServiceWorker: Gagal mengeksekusi showNotification:", err);
       }

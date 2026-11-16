@@ -8,6 +8,7 @@ import {
   fetchServerJoinRequests,
   JoinRequest,
 } from "@/lib/invitation-service";
+import { useWorkspaceJoinRequestsQuery } from "@/lib/hooks/useInvitationQueries";
 import {
   getOutlookSchedulerConfig,
   OUTLOOK_SCHEDULER_EVENT,
@@ -56,6 +57,16 @@ export function SettingsModal({
   const [isSchedulerEnabled, setIsSchedulerEnabled] = useState(() =>
     getOutlookSchedulerConfig().enabled
   );
+
+  const { data: serverJoinRequests } = useWorkspaceJoinRequestsQuery(
+    isOpen ? workspace?.id : undefined
+  );
+
+  useEffect(() => {
+    if (serverJoinRequests) {
+      setPendingJoinRequests(serverJoinRequests);
+    }
+  }, [serverJoinRequests]);
 
   useEffect(() => {
     if (isOpen) {

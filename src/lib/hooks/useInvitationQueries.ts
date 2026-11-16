@@ -14,6 +14,8 @@ export function useWorkspaceInvitationsQuery(workspaceId?: string) {
     queryKey: ["workspace-invitations", workspaceId],
     queryFn: () => fetchWorkspaceInvitations(workspaceId),
     enabled: Boolean(workspaceId),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 
@@ -22,6 +24,8 @@ export function useWorkspaceJoinRequestsQuery(workspaceId?: string) {
     queryKey: ["workspace-join-requests", workspaceId],
     queryFn: () => (workspaceId ? fetchServerJoinRequests(workspaceId) : Promise.resolve([])),
     enabled: Boolean(workspaceId),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 

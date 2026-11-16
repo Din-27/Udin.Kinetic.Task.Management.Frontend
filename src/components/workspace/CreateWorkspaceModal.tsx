@@ -179,7 +179,7 @@ export function CreateWorkspaceModal({
       isMounted = false;
       clearInterval(interval);
     };
-  }, [isOpen, currentUser, joinRequestSent, onJoinedWorkspace, onClose]);
+  }, [isOpen, currentUser, joinRequestSent, onJoinedWorkspace, onClose, updateJoinRequestMutation]);
 
   if (!isOpen) return null;
 

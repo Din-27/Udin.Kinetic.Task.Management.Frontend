@@ -155,11 +155,6 @@ export interface MarketingCarouselProps {
 }
 
 export function MarketingCarousel({ onSelectTab, onClose, isModal = false, isOpen }: MarketingCarouselProps) {
-  // If isOpen is provided explicitly and is false, don't render anything
-  if (isOpen !== undefined && !isOpen) {
-    return null;
-  }
-
   const isModalMode = isModal || isOpen !== undefined;
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -179,6 +174,7 @@ export function MarketingCarousel({ onSelectTab, onClose, isModal = false, isOpe
 
   // Auto-play timer
   useEffect(() => {
+    if (isOpen !== undefined && !isOpen) return;
     if (isPlaying) {
       timerRef.current = setInterval(() => {
         handleNext();
@@ -187,7 +183,7 @@ export function MarketingCarousel({ onSelectTab, onClose, isModal = false, isOpe
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isPlaying, handleNext]);
+  }, [isPlaying, handleNext, isOpen]);
 
   // Touch swipe handling for mobile
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -208,6 +204,11 @@ export function MarketingCarousel({ onSelectTab, onClose, isModal = false, isOpe
     }
     setTouchStartX(null);
   };
+
+  // If isOpen is provided explicitly and is false, don't render anything
+  if (isOpen !== undefined && !isOpen) {
+    return null;
+  }
 
   const handleActionClick = (targetTab: string) => {
     if (onSelectTab) {

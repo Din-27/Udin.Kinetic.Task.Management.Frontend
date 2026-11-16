@@ -1836,7 +1836,7 @@ export function WhiteboardView({
                 {remoteTyping[cursor.userId] && (
                   <div className="absolute top-6 left-5 bg-background/95 border border-border shadow-xl rounded-lg px-2.5 py-1 text-[11px] text-foreground font-medium max-w-[200px] truncate animate-in fade-in zoom-in-95">
                     <span className="text-muted-foreground mr-1">sedang mengetik:</span>
-                    <span className="italic font-semibold">"{remoteTyping[cursor.userId].text}"</span>
+                    <span className="italic font-semibold">&ldquo;{remoteTyping[cursor.userId].text}&rdquo;</span>
                   </div>
                 )}
               </div>

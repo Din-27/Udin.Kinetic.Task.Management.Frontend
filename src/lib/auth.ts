@@ -197,7 +197,7 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: "/",
   },
-  secret: process.env.NEXTAUTH_SECRET || "kinetic-secret-key-google-sso-32-chars-long",
+  secret: process.env.NEXTAUTH_SECRET,
 };
 
 export async function getCurrentUserFromSession() {
