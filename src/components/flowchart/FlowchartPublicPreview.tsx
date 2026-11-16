@@ -34,6 +34,9 @@ import {
   FlowchartNodeData,
   nodeTypes,
   edgeTypes,
+  normalizeSourceHandle,
+  normalizeTargetHandle,
+  getOptimalHandles,
 } from "./FlowchartView";
 import { useFlowchartByIdQuery } from "@/lib/hooks/useFlowchartQueries";
 
@@ -106,12 +109,16 @@ function FlowchartPreviewContent({ diagramId }: { diagramId: string }) {
         const hasEnd = e.arrowStyle !== "line";
         const isDashed = e.arrowStyle === "dashed";
 
+        const sNode = (queryDiagram.nodes || []).find((n) => n.id === e.source);
+        const tNode = (queryDiagram.nodes || []).find((n) => n.id === e.target);
+        const optimal = getOptimalHandles(sNode, tNode);
+
         return {
           id: e.id,
           source: e.source,
           target: e.target,
-          sourceHandle: e.sourceHandle || "bottom",
-          targetHandle: e.targetHandle || "top",
+          sourceHandle: e.sourceHandle ? normalizeSourceHandle(e.sourceHandle) : optimal.sourceHandle,
+          targetHandle: e.targetHandle ? normalizeTargetHandle(e.targetHandle) : optimal.targetHandle,
           label: e.label,
           type: "shadowStep",
           markerEnd: hasEnd
