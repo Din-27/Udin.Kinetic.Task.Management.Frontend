@@ -90,6 +90,7 @@ export function Avatar({
       {...props}
     >
       {hasValidSrc ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={cleanSrc}
           alt={alt}

@@ -3,7 +3,7 @@
 export const VAPID_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
   process.env.NEXT_VAPID_PUBLIC_KEY ||
-  "BLeU_4VxmooOIxLVGlssH3fLzxMiQQ1RgAOVyS8xG8q3C7zRpkHDvFYXLhlXWgGyMdwfk3flVdIdtJyglgMVEj4";
+  "";
 
 export function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);

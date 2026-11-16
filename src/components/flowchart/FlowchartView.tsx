@@ -892,6 +892,7 @@ export function FlowchartCustomNode({ data, selected }: NodeProps<FlowchartNodeD
           {renderHandles()}
           <div className="flex-1 w-full flex items-center justify-center p-1 bg-muted/40 overflow-hidden relative">
             {data.imageUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={data.imageUrl}
                 alt={data.label}
@@ -4395,7 +4396,7 @@ function FlowchartCanvas({
                       </div>
                       {chatNote.trim() && (
                         <div className="text-xs italic text-foreground/80 bg-background/50 p-2 rounded-lg border border-border/40">
-                          "{chatNote.trim()}"
+                          &ldquo;{chatNote.trim()}&rdquo;
                         </div>
                       )}
                     </div>

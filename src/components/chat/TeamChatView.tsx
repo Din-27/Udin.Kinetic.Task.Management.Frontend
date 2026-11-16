@@ -213,7 +213,7 @@ export function TeamChatView({
       isMounted = false;
       leaveWorkspaceRoom(targetWsId);
     };
-  }, [targetWsId, currentProjId, currentUser.id, currentUser.email]);
+  }, [targetWsId, currentProjId, currentUser.id, currentUser.email, chatType]);
 
   useEffect(() => {
     // Langsung posisikan tampilan pada pesan terakhir (last chat) secara instan tanpa animasi bergulir

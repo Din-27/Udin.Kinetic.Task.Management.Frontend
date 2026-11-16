@@ -617,14 +617,20 @@ export function useAppState() {
   }, [session, sessionStatus]);
 
   // Inisialisasi daftar workspace pengguna setelah terautentikasi
+  const sessionUserId = (session?.user as any)?.id;
+  const sessionUserEmail = session?.user?.email;
+  const currentUserId = currentUser?.id;
+  const currentUserEmail = currentUser?.email;
+  const workspaceId = workspace?.id;
+
   useEffect(() => {
     if (!isAuthenticated) {
       setIsWorkspacesInitializing(false);
       return;
     }
 
-    const targetUserId = (session?.user as any)?.id || currentUser?.id;
-    const targetEmail = session?.user?.email || currentUser?.email;
+    const targetUserId = sessionUserId || currentUserId;
+    const targetEmail = sessionUserEmail || currentUserEmail;
     if (!targetUserId && !targetEmail) {
       setIsWorkspacesInitializing(false);
       return;
@@ -644,7 +650,7 @@ export function useAppState() {
           if (Array.isArray(serverWsList) && serverWsList.length > 0) {
             setWorkspaces(serverWsList);
             const stillExists = serverWsList.find(
-              (w: Workspace) => w.id === workspace?.id,
+              (w: Workspace) => w.id === workspaceId,
             );
             const activeWs = stillExists || serverWsList[0];
             setWorkspace(activeWs);
@@ -672,11 +678,11 @@ export function useAppState() {
     }
   }, [
     isAuthenticated,
-    (session?.user as any)?.id,
-    session?.user?.email,
-    currentUser?.id,
-    currentUser?.email,
-    workspace?.id,
+    sessionUserId,
+    sessionUserEmail,
+    currentUserId,
+    currentUserEmail,
+    workspaceId,
     loadWorkspaceData,
   ]);
 

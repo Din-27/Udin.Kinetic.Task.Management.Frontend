@@ -179,6 +179,7 @@ export function useUnreadChatTracker(currentUser?: User, workspaceId?: string, a
    */
   const getTeamChatUnread = useCallback(
     (messages: ChatMessage[] = []): number => {
+      void refreshTrigger;
       if (!workspaceId) return 0;
       const lastRead = getLastReadTimestamp(`team_discussion_${workspaceId}`);
       return messages.filter((m) => {
@@ -195,6 +196,7 @@ export function useUnreadChatTracker(currentUser?: User, workspaceId?: string, a
    */
   const getProjectChatUnread = useCallback(
     (projectId: string, messages: ChatMessage[] = []): number => {
+      void refreshTrigger;
       if (!projectId) return 0;
       const lastRead = getLastReadTimestamp(`project_chat_${projectId}`);
       return messages.filter((m) => {

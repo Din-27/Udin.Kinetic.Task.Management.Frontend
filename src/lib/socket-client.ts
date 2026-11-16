@@ -19,7 +19,7 @@ export function getSocket(): Socket {
       addTrailingSlash: false,
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: Infinity,
+      reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
@@ -84,7 +84,7 @@ export function joinWorkspaceRoom(workspaceId: string) {
   if (socket.connected) {
     doJoin();
   } else {
-    socket.on("connect", doJoin);
+    socket.once("connect", doJoin);
   }
 }
 
@@ -111,7 +111,7 @@ export function joinTaskRoom(taskId: string) {
   if (socket.connected) {
     doJoin();
   } else {
-    socket.on("connect", doJoin);
+    socket.once("connect", doJoin);
   }
 }
 
