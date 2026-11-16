@@ -22,6 +22,7 @@ import ReactFlow, {
   getSmoothStepPath,
   ReactFlowProvider,
   useReactFlow,
+  useStore,
   Panel,
 } from "reactflow";
 import "reactflow/dist/style.css";
@@ -182,6 +183,107 @@ export interface FlowchartDiagram {
 export const generateUniqueFlowId = () =>
   `flow-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
+/**
+ * Normalisasi id sourceHandle agar selalu memiliki suffix '-source' yang unik & eksplisit
+ */
+export function normalizeSourceHandle(h?: string | null): string {
+  if (!h) return "bottom-source";
+  if (h === "top" || h === "top-source") return "top-source";
+  if (h === "bottom" || h === "bottom-source") return "bottom-source";
+  if (h === "left" || h === "left-source") return "left-source";
+  if (h === "right" || h === "right-source") return "right-source";
+  if (h.endsWith("-target")) return h.replace("-target", "-source");
+  return h;
+}
+
+/**
+ * Normalisasi id targetHandle agar selalu memiliki suffix '-target' yang unik & eksplisit
+ */
+export function normalizeTargetHandle(h?: string | null): string {
+  if (!h) return "top-target";
+  if (h === "top" || h === "top-target") return "top-target";
+  if (h === "bottom" || h === "bottom-target") return "bottom-target";
+  if (h === "left" || h === "left-target") return "left-target";
+  if (h === "right" || h === "right-target") return "right-target";
+  if (h.endsWith("-source")) return h.replace("-source", "-target");
+  return h;
+}
+
+/**
+ * Menghitung handle source dan target optimal berdasarkan posisi relatif titik tengah (dx, dy)
+ * antara sourceNode dan targetNode agar garis keluar dari sisi yang tepat dan tidak pernah menembus badan node.
+ */
+export function getOptimalHandles(
+  sourceNode?: Node | FlowchartDiagramNode | null,
+  targetNode?: Node | FlowchartDiagramNode | null
+): { sourceHandle: string; targetHandle: string } {
+  if (!sourceNode || !targetNode) {
+    return { sourceHandle: "bottom-source", targetHandle: "top-target" };
+  }
+
+  // Self-loop: shape mengarah ke dirinya sendiri
+  if (sourceNode.id === targetNode.id) {
+    return { sourceHandle: "right-source", targetHandle: "top-target" };
+  }
+
+  const sWidth =
+    ("data" in sourceNode && (sourceNode as Node<FlowchartNodeData>).data?.width) ||
+    ("width" in sourceNode && (sourceNode as any).width) ||
+    160;
+  const sHeight =
+    ("data" in sourceNode && (sourceNode as Node<FlowchartNodeData>).data?.height) ||
+    ("height" in sourceNode && (sourceNode as any).height) ||
+    65;
+
+  const tWidth =
+    ("data" in targetNode && (targetNode as Node<FlowchartNodeData>).data?.width) ||
+    ("width" in targetNode && (targetNode as any).width) ||
+    160;
+  const tHeight =
+    ("data" in targetNode && (targetNode as Node<FlowchartNodeData>).data?.height) ||
+    ("height" in targetNode && (targetNode as any).height) ||
+    65;
+
+  const sPos =
+    "position" in sourceNode
+      ? (sourceNode as Node).position
+      : { x: (sourceNode as any).x || 0, y: (sourceNode as any).y || 0 };
+  const tPos =
+    "position" in targetNode
+      ? (targetNode as Node).position
+      : { x: (targetNode as any).x || 0, y: (targetNode as any).y || 0 };
+
+  const sCenterX = sPos.x + sWidth / 2;
+  const sCenterY = sPos.y + sHeight / 2;
+
+  const tCenterX = tPos.x + tWidth / 2;
+  const tCenterY = tPos.y + tHeight / 2;
+
+  const dx = tCenterX - sCenterX;
+  const dy = tCenterY - sCenterY;
+
+  // Evaluasi orientasi dominan
+  if (Math.abs(dy) >= Math.abs(dx)) {
+    // Alur Vertikal dominan
+    if (dy >= 0) {
+      // Target di bawah Source (Alur atas ke bawah: keluar sisi bawah source, masuk sisi atas target)
+      return { sourceHandle: "bottom-source", targetHandle: "top-target" };
+    } else {
+      // Target di atas Source (Alur bawah ke atas: keluar sisi atas source, masuk sisi bawah target)
+      return { sourceHandle: "top-source", targetHandle: "bottom-target" };
+    }
+  } else {
+    // Alur Horizontal dominan
+    if (dx >= 0) {
+      // Target di sebelah kanan Source (Alur kiri ke kanan: keluar sisi kanan source, masuk sisi kiri target)
+      return { sourceHandle: "right-source", targetHandle: "left-target" };
+    } else {
+      // Target di sebelah kiri Source (Alur kanan ke kiri: keluar sisi kiri source, masuk sisi kanan target)
+      return { sourceHandle: "left-source", targetHandle: "right-target" };
+    }
+  }
+}
+
 const DEFAULT_DIAGRAM: FlowchartDiagram = {
   id: "",
   workspaceId: "default",
@@ -210,15 +312,15 @@ const DEFAULT_DIAGRAM: FlowchartDiagram = {
     { id: "node-fail", type: "END", label: "Tolak & Tampilkan Error", x: 640, y: 495, width: 160, height: 50, color: "#f43f5e" },
   ],
   edges: [
-    { id: "e1", source: "node-start", target: "node-input", sourceHandle: "bottom", targetHandle: "top", arrowStyle: "directed" },
-    { id: "e2", source: "node-input", target: "node-query", sourceHandle: "bottom", targetHandle: "top", arrowStyle: "directed" },
-    { id: "e3", source: "node-query", target: "node-check", sourceHandle: "bottom", targetHandle: "top", arrowStyle: "directed" },
-    { id: "e4", source: "node-check", target: "node-otp", sourceHandle: "bottom", targetHandle: "top", label: "Ya", arrowStyle: "directed" },
-    { id: "e5", source: "node-check", target: "node-fail", sourceHandle: "right", targetHandle: "left", label: "Salah", arrowStyle: "directed", color: "#f43f5e" },
-    { id: "e6", source: "node-otp", target: "node-send-otp", sourceHandle: "left", targetHandle: "top", label: "Ya", arrowStyle: "directed" },
-    { id: "e7", source: "node-send-otp", target: "node-session", sourceHandle: "right", targetHandle: "left", arrowStyle: "directed" },
-    { id: "e8", source: "node-otp", target: "node-session", sourceHandle: "bottom", targetHandle: "top", label: "Tidak", arrowStyle: "directed" },
-    { id: "e9", source: "node-session", target: "node-success", sourceHandle: "bottom", targetHandle: "top", arrowStyle: "directed" },
+    { id: "e1", source: "node-start", target: "node-input", sourceHandle: "bottom-source", targetHandle: "top-target", arrowStyle: "directed" },
+    { id: "e2", source: "node-input", target: "node-query", sourceHandle: "bottom-source", targetHandle: "top-target", arrowStyle: "directed" },
+    { id: "e3", source: "node-query", target: "node-check", sourceHandle: "bottom-source", targetHandle: "top-target", arrowStyle: "directed" },
+    { id: "e4", source: "node-check", target: "node-otp", sourceHandle: "bottom-source", targetHandle: "top-target", label: "Ya", arrowStyle: "directed" },
+    { id: "e5", source: "node-check", target: "node-fail", sourceHandle: "right-source", targetHandle: "left-target", label: "Salah", arrowStyle: "directed", color: "#f43f5e" },
+    { id: "e6", source: "node-otp", target: "node-send-otp", sourceHandle: "left-source", targetHandle: "top-target", label: "Ya", arrowStyle: "directed" },
+    { id: "e7", source: "node-send-otp", target: "node-session", sourceHandle: "right-source", targetHandle: "left-target", arrowStyle: "directed" },
+    { id: "e8", source: "node-otp", target: "node-session", sourceHandle: "bottom-source", targetHandle: "top-target", label: "Tidak", arrowStyle: "directed" },
+    { id: "e9", source: "node-session", target: "node-success", sourceHandle: "bottom-source", targetHandle: "top-target", arrowStyle: "directed" },
   ],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
@@ -458,6 +560,7 @@ export const edgeTypes = {
  * Custom React Flow Node: 2D Flat Shape dengan 4 Connection Handles (Top, Right, Bottom, Left)
  */
 export function FlowchartCustomNode({ data, selected }: NodeProps<FlowchartNodeData>) {
+  const isConnecting = useStore((s) => Boolean(s.connectionNodeId));
   const nodeType = data.nodeType || "PROCESS";
   const color = data.color || "#3b82f6";
   const width = data.width || 160;
@@ -476,75 +579,96 @@ export function FlowchartCustomNode({ data, selected }: NodeProps<FlowchartNodeD
     : "hover:border-primary/80"
     } ${borderClass}`;
 
-  // 4 Connection Handles di 4 Sisi (Top, Right, Bottom, Left) untuk Menarik & Menghubungkan Panah Bebas
+  // 4 Connection Handles di 4 Sisi (Top, Right, Bottom, Left)
+  // Memiliki ID unik & peran I/O eksplisit (top-target, top-source, dll) tanpa konflik DOM
   const renderHandles = () => (
     <>
       {/* Atas */}
       <Handle
         type="target"
         position={Position.Top}
-        id="top"
+        id="top-target"
         isConnectable={true}
-        className="!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair z-30 shadow-md"
-        title="Titik Sambung Atas"
+        className={`!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair shadow-md ${
+          isConnecting ? "z-30 pointer-events-auto" : "z-20 pointer-events-none opacity-0"
+        }`}
+        title="Titik Sambung Atas (Target)"
       />
       <Handle
         type="source"
         position={Position.Top}
-        id="top"
+        id="top-source"
         isConnectable={true}
-        className="!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair z-30 shadow-md opacity-0 pointer-events-none"
+        className={`!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair shadow-md ${
+          isConnecting ? "z-20 pointer-events-none opacity-0" : "z-30 pointer-events-auto"
+        }`}
+        title="Titik Sambung Atas (Source)"
       />
 
       {/* Kanan */}
       <Handle
         type="target"
         position={Position.Right}
-        id="right"
+        id="right-target"
         isConnectable={true}
-        className="!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair z-30 shadow-md"
-        title="Titik Sambung Kanan"
+        className={`!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair shadow-md ${
+          isConnecting ? "z-30 pointer-events-auto" : "z-20 pointer-events-none opacity-0"
+        }`}
+        title="Titik Sambung Kanan (Target)"
       />
       <Handle
         type="source"
         position={Position.Right}
-        id="right"
+        id="right-source"
         isConnectable={true}
-        className="!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair z-30 shadow-md opacity-0 pointer-events-none"
+        className={`!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair shadow-md ${
+          isConnecting ? "z-20 pointer-events-none opacity-0" : "z-30 pointer-events-auto"
+        }`}
+        title="Titik Sambung Kanan (Source)"
       />
 
       {/* Bawah */}
       <Handle
         type="target"
         position={Position.Bottom}
-        id="bottom"
+        id="bottom-target"
         isConnectable={true}
-        className="!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair z-30 shadow-md"
-        title="Titik Sambung Bawah"
+        className={`!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair shadow-md ${
+          isConnecting ? "z-30 pointer-events-auto" : "z-20 pointer-events-none opacity-0"
+        }`}
+        title="Titik Sambung Bawah (Target)"
       />
       <Handle
         type="source"
         position={Position.Bottom}
-        id="bottom"
+        id="bottom-source"
         isConnectable={true}
-        className="!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair z-30 shadow-md opacity-0 pointer-events-none"
+        className={`!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair shadow-md ${
+          isConnecting ? "z-20 pointer-events-none opacity-0" : "z-30 pointer-events-auto"
+        }`}
+        title="Titik Sambung Bawah (Source)"
       />
 
       {/* Kiri */}
       <Handle
         type="target"
         position={Position.Left}
-        id="left"
+        id="left-target"
         isConnectable={true}
-        className="!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair z-30 shadow-md"
-        title="Titik Sambung Kiri"
+        className={`!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair shadow-md ${
+          isConnecting ? "z-30 pointer-events-auto" : "z-20 pointer-events-none opacity-0"
+        }`}
+        title="Titik Sambung Kiri (Target)"
       />
       <Handle
         type="source"
         position={Position.Left}
-        id="left"
+        id="left-source"
         isConnectable={true}
-        className="!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair z-30 shadow-md opacity-0 pointer-events-none"
+        className={`!w-3.5 !h-3.5 !bg-blue-600 hover:!bg-blue-700 !border-2 !border-white dark:!border-slate-900 !rounded-full transition-transform hover:!scale-150 cursor-crosshair shadow-md ${
+          isConnecting ? "z-20 pointer-events-none opacity-0" : "z-30 pointer-events-auto"
+        }`}
+        title="Titik Sambung Kiri (Source)"
       />
     </>
   );
@@ -921,23 +1045,30 @@ function FlowchartCanvas({
 
   // Konversi Diagram Edge ke format React Flow Edge
   const initialEdges: Edge[] = useMemo(() => {
-    return DEFAULT_DIAGRAM.edges.map((e) => ({
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      label: e.label,
-      type: "shadowStep",
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        width: 18,
-        height: 18,
-        color: e.color || "#475569",
-      },
-      style: {
-        stroke: e.color || "#475569",
-        strokeWidth: e.strokeWidth || 2,
-      },
-    }));
+    return DEFAULT_DIAGRAM.edges.map((e) => {
+      const sNode = DEFAULT_DIAGRAM.nodes.find((n) => n.id === e.source);
+      const tNode = DEFAULT_DIAGRAM.nodes.find((n) => n.id === e.target);
+      const optimal = getOptimalHandles(sNode, tNode);
+      return {
+        id: e.id,
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle ? normalizeSourceHandle(e.sourceHandle) : optimal.sourceHandle,
+        targetHandle: e.targetHandle ? normalizeTargetHandle(e.targetHandle) : optimal.targetHandle,
+        label: e.label,
+        type: "shadowStep",
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 18,
+          height: 18,
+          color: e.color || "#475569",
+        },
+        style: {
+          stroke: e.color || "#475569",
+          strokeWidth: e.strokeWidth || 2,
+        },
+      };
+    });
   }, []);
 
   const [nodes, setNodes] = useState<Node<FlowchartNodeData>[]>(initialNodes);
@@ -980,7 +1111,49 @@ function FlowchartCanvas({
     []
   );
 
-  // Algoritma Pencari Sisi Bebas (Free Handle) agar panah tidak duplikat menumpuk di sisi yang itu-itu saja
+  // Dynamic edge handle re-binding saat node digeser agar selalu terikat pada sisi terdekat yang logis tanpa menembus isi node
+  const onNodeDrag = useCallback(
+    (_: React.MouseEvent, draggedNode: Node) => {
+      setEdges((prevEdges) => {
+        let hasChanges = false;
+        const nextEdges = prevEdges.map((edge) => {
+          if (edge.source !== draggedNode.id && edge.target !== draggedNode.id) {
+            return edge;
+          }
+          if (edge.source === edge.target) {
+            return edge; // self-loop tetap dipertahankan
+          }
+
+          const sNode = edge.source === draggedNode.id ? draggedNode : nodes.find((n) => n.id === edge.source);
+          const tNode = edge.target === draggedNode.id ? draggedNode : nodes.find((n) => n.id === edge.target);
+          if (!sNode || !tNode) return edge;
+
+          const optimal = getOptimalHandles(sNode, tNode);
+          if (edge.sourceHandle !== optimal.sourceHandle || edge.targetHandle !== optimal.targetHandle) {
+            hasChanges = true;
+            return {
+              ...edge,
+              sourceHandle: optimal.sourceHandle,
+              targetHandle: optimal.targetHandle,
+            };
+          }
+          return edge;
+        });
+
+        return hasChanges ? nextEdges : prevEdges;
+      });
+    },
+    [nodes]
+  );
+
+  const onNodeDragStop = useCallback(
+    (_: React.MouseEvent, draggedNode: Node) => {
+      onNodeDrag(_, draggedNode);
+    },
+    [onNodeDrag]
+  );
+
+  // Algoritma Penentuan Handle (I/O) berbasis posisi relatif (dx, dy) antar node
   const findAvailableHandles = useCallback(
     (
       sourceId: string,
@@ -989,27 +1162,38 @@ function FlowchartCanvas({
       suggestedSource?: string | null,
       suggestedTarget?: string | null
     ): { sourceHandle: string; targetHandle: string } => {
+      const sourceNode = nodes.find((n) => n.id === sourceId);
+      const targetNode = nodes.find((n) => n.id === targetId);
+
       // 1. Jika menghubungkan ke shape yang sama (self-loop / loop back)
       if (sourceId === targetId) {
         const selfEdges = existingEdges.filter((e) => e.source === sourceId && e.target === targetId);
-        const usedCombos = new Set(selfEdges.map((e) => `${e.sourceHandle || "right"}->${e.targetHandle || "top"}`));
+        const usedCombos = new Set(
+          selfEdges.map(
+            (e) => `${normalizeSourceHandle(e.sourceHandle)}->${normalizeTargetHandle(e.targetHandle)}`
+          )
+        );
 
         const loopCandidates: [string, string][] = [
-          ["right", "top"],
-          ["bottom", "left"],
-          ["left", "bottom"],
-          ["top", "right"],
-          ["right", "bottom"],
-          ["left", "top"],
-          ["bottom", "right"],
-          ["top", "left"],
+          ["right-source", "top-target"],
+          ["bottom-source", "left-target"],
+          ["left-source", "bottom-target"],
+          ["top-source", "right-target"],
+          ["right-source", "bottom-target"],
+          ["left-source", "top-target"],
+          ["bottom-source", "right-target"],
+          ["top-source", "left-target"],
         ];
 
         if (suggestedSource && suggestedTarget && suggestedSource !== suggestedTarget) {
-          return { sourceHandle: suggestedSource, targetHandle: suggestedTarget };
+          return {
+            sourceHandle: normalizeSourceHandle(suggestedSource),
+            targetHandle: normalizeTargetHandle(suggestedTarget),
+          };
         }
         if (suggestedSource) {
-          const match = loopCandidates.find(([s]) => s === suggestedSource && !usedCombos.has(`${s}->${suggestedTarget || ""}`));
+          const normS = normalizeSourceHandle(suggestedSource);
+          const match = loopCandidates.find(([s]) => s === normS && !usedCombos.has(`${s}->${suggestedTarget || ""}`));
           if (match) return { sourceHandle: match[0], targetHandle: match[1] };
         }
 
@@ -1018,57 +1202,20 @@ function FlowchartCanvas({
             return { sourceHandle: s, targetHandle: t };
           }
         }
-        return { sourceHandle: "right", targetHandle: "top" };
+        return { sourceHandle: "right-source", targetHandle: "top-target" };
       }
 
-      // 2. Jika menghubungkan dua shape berbeda
-      const edgesBetween = existingEdges.filter(
-        (e) => (e.source === sourceId && e.target === targetId) || (e.source === targetId && e.target === sourceId)
-      );
-
-      // Jika user sudah spesifik mendrag dari handle tertentu dan mendrop di handle tertentu
-      if (suggestedSource && suggestedTarget) {
-        return { sourceHandle: suggestedSource, targetHandle: suggestedTarget };
+      // 2. Jika menghubungkan dua shape berbeda: hitung optimal handles dari delta posisi relatif (dx, dy)
+      if (sourceNode && targetNode) {
+        return getOptimalHandles(sourceNode, targetNode);
       }
 
-      const usedSourceHandles = new Set(edgesBetween.filter((e) => e.source === sourceId).map((e) => e.sourceHandle || "bottom"));
-      const usedTargetHandles = new Set(edgesBetween.filter((e) => e.target === targetId).map((e) => e.targetHandle || "top"));
-
-      if (suggestedSource && !suggestedTarget) {
-        const targetOpts = ["top", "left", "right", "bottom"].filter((h) => h !== suggestedSource);
-        const freeTarget = targetOpts.find((h) => !usedTargetHandles.has(h)) || targetOpts[0];
-        return { sourceHandle: suggestedSource, targetHandle: freeTarget };
-      }
-
-      if (!suggestedSource && suggestedTarget) {
-        const sourceOpts = ["bottom", "right", "left", "top"].filter((h) => h !== suggestedTarget);
-        const freeSource = sourceOpts.find((h) => !usedSourceHandles.has(h)) || sourceOpts[0];
-        return { sourceHandle: freeSource, targetHandle: suggestedTarget };
-      }
-
-      // Pasangan kandidat orthogonal: DEFAULT UTAMA = Bawah ke Atas (bottom -> top)
-      const pairCandidates: [string, string][] = [
-        ["bottom", "top"],
-        ["right", "left"],
-        ["top", "bottom"],
-        ["left", "right"],
-        ["bottom", "left"],
-        ["top", "right"],
-        ["right", "top"],
-        ["left", "bottom"],
-      ];
-
-      const usedPairs = new Set(edgesBetween.map((e) => `${e.sourceHandle || "bottom"}->${e.targetHandle || "top"}`));
-
-      for (const [s, t] of pairCandidates) {
-        if (!usedPairs.has(`${s}->${t}`)) {
-          return { sourceHandle: s, targetHandle: t };
-        }
-      }
-
-      return { sourceHandle: "bottom", targetHandle: "top" };
+      return {
+        sourceHandle: normalizeSourceHandle(suggestedSource),
+        targetHandle: normalizeTargetHandle(suggestedTarget),
+      };
     },
-    []
+    [nodes]
   );
 
   // Connect handler: membuat panah 1 arah default dengan penentuan sisi bebas otomatis
@@ -1119,8 +1266,8 @@ function FlowchartCanvas({
 
   const onEdgeUpdate = useCallback((oldEdge: Edge, newConnection: Connection) => {
     edgeUpdateSuccessful.current = true;
-    const finalSourceHandle = newConnection.sourceHandle || oldEdge.sourceHandle || "bottom";
-    const finalTargetHandle = newConnection.targetHandle || oldEdge.targetHandle || "top";
+    const finalSourceHandle = normalizeSourceHandle(newConnection.sourceHandle || oldEdge.sourceHandle);
+    const finalTargetHandle = normalizeTargetHandle(newConnection.targetHandle || oldEdge.targetHandle);
 
     setEdges((els) => {
       const updated = updateEdge(
@@ -1304,7 +1451,7 @@ function FlowchartCanvas({
       })
     );
 
-    // 6. Rapikan arah panah: default dari bawah ke atas
+    // 6. Rapikan arah panah: default dari bawah ke atas dengan ID handle eksplisit
     setEdges((eds) =>
       eds.map((e) => {
         if (e.source === e.target) return e;
@@ -1312,17 +1459,17 @@ function FlowchartCanvas({
         const tRank = ranks.get(e.target) || 0;
 
         if (tRank > sRank) {
-          return { ...e, sourceHandle: "bottom", targetHandle: "top" };
+          return { ...e, sourceHandle: "bottom-source", targetHandle: "top-target" };
         } else if (tRank === sRank) {
           const sPos = newPositions.get(e.source);
           const tPos = newPositions.get(e.target);
           if (sPos && tPos && tPos.x > sPos.x) {
-            return { ...e, sourceHandle: "right", targetHandle: "left" };
+            return { ...e, sourceHandle: "right-source", targetHandle: "left-target" };
           } else {
-            return { ...e, sourceHandle: "left", targetHandle: "right" };
+            return { ...e, sourceHandle: "left-source", targetHandle: "right-target" };
           }
         } else {
-          return { ...e, sourceHandle: "right", targetHandle: "right" };
+          return { ...e, sourceHandle: "right-source", targetHandle: "right-target" };
         }
       })
     );
@@ -1475,12 +1622,16 @@ function FlowchartCanvas({
       const hasEnd = e.arrowStyle !== "line";
       const isDashed = e.arrowStyle === "dashed";
 
+      const sNode = (diag.nodes || []).find((n) => n.id === e.source);
+      const tNode = (diag.nodes || []).find((n) => n.id === e.target);
+      const optimal = getOptimalHandles(sNode, tNode);
+
       return {
         id: e.id,
         source: e.source,
         target: e.target,
-        sourceHandle: e.sourceHandle || "bottom",
-        targetHandle: e.targetHandle || "top",
+        sourceHandle: e.sourceHandle ? normalizeSourceHandle(e.sourceHandle) : optimal.sourceHandle,
+        targetHandle: e.targetHandle ? normalizeTargetHandle(e.targetHandle) : optimal.targetHandle,
         label: e.label,
         type: "shadowStep",
         markerEnd: hasEnd
@@ -2246,7 +2397,21 @@ function FlowchartCanvas({
   const handleReverseEdge = () => {
     if (!selectedEdgeId) return;
     setEdges((eds) =>
-      eds.map((e) => (e.id === selectedEdgeId ? { ...e, source: e.target, target: e.source } : e))
+      eds.map((e) => {
+        if (e.id !== selectedEdgeId) return e;
+        const newSource = e.target;
+        const newTarget = e.source;
+        const sNode = nodes.find((n) => n.id === newSource);
+        const tNode = nodes.find((n) => n.id === newTarget);
+        const optimal = getOptimalHandles(sNode, tNode);
+        return {
+          ...e,
+          source: newSource,
+          target: newTarget,
+          sourceHandle: optimal.sourceHandle,
+          targetHandle: optimal.targetHandle,
+        };
+      })
     );
     toastAlert({
       title: "Arah Panah Dibalik",
@@ -2351,10 +2516,13 @@ function FlowchartCanvas({
         left: { x: tX, y: tY + tH / 2 },
       };
 
+      const cleanSHandle = sHandle ? sHandle.replace("-source", "").replace("-target", "") : undefined;
+      const cleanTHandle = tHandle ? tHandle.replace("-source", "").replace("-target", "") : undefined;
+
       // Jika self-loop (mengarah ke shape yang sama)
       if (sNode.id === tNode.id) {
-        const sh = sHandle || "right";
-        const th = tHandle || "top";
+        const sh = cleanSHandle || "right";
+        const th = cleanTHandle || "top";
         const start = sPoints[sh] || sPoints.right;
         const end = tPoints[th] || tPoints.top;
 
@@ -2373,14 +2541,14 @@ function FlowchartCanvas({
       }
 
       // Jika handle eksplisit telah ditentukan
-      if (sHandle && tHandle && sPoints[sHandle] && tPoints[tHandle]) {
-        const start = sPoints[sHandle];
-        const end = tPoints[tHandle];
+      if (cleanSHandle && cleanTHandle && sPoints[cleanSHandle] && tPoints[cleanTHandle]) {
+        const start = sPoints[cleanSHandle];
+        const end = tPoints[cleanTHandle];
         const midX = (start.x + end.x) / 2;
         const midY = (start.y + end.y) / 2;
 
         let pathD = "";
-        if (sHandle === "right" || sHandle === "left") {
+        if (cleanSHandle === "right" || cleanSHandle === "left") {
           pathD = `M ${start.x} ${start.y} L ${midX} ${start.y} L ${midX} ${end.y} L ${end.x} ${end.y}`;
         } else {
           pathD = `M ${start.x} ${start.y} L ${start.x} ${midY} L ${end.x} ${midY} L ${end.x} ${end.y}`;
@@ -3182,6 +3350,8 @@ function FlowchartCanvas({
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodeDrag={onNodeDrag}
+          onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
           onEdgeUpdate={onEdgeUpdate}
           onEdgeUpdateStart={onEdgeUpdateStart}
@@ -3876,17 +4046,20 @@ function FlowchartCanvas({
                     <span>Dari Sisi (Shape Asal)</span>
                   </span>
                   <span className="text-[10px] text-muted-foreground font-mono uppercase">
-                    {selectedEdge.sourceHandle || "bottom"}
+                    {(selectedEdge.sourceHandle || "bottom-source").replace("-source", "")}
                   </span>
                 </label>
                 <div className="grid grid-cols-4 gap-1.5">
                   {[
-                    { id: "top", label: "Atas", icon: ArrowUp },
-                    { id: "right", label: "Kanan", icon: ArrowRight },
-                    { id: "bottom", label: "Bawah", icon: ArrowDown },
-                    { id: "left", label: "Kiri", icon: ArrowLeft },
+                    { id: "top-source", base: "top", label: "Atas", icon: ArrowUp },
+                    { id: "right-source", base: "right", label: "Kanan", icon: ArrowRight },
+                    { id: "bottom-source", base: "bottom", label: "Bawah", icon: ArrowDown },
+                    { id: "left-source", base: "left", label: "Kiri", icon: ArrowLeft },
                   ].map((h) => {
-                    const isCur = (selectedEdge.sourceHandle || "bottom") === h.id;
+                    const isCur =
+                      selectedEdge.sourceHandle === h.id ||
+                      selectedEdge.sourceHandle === h.base ||
+                      (!selectedEdge.sourceHandle && h.base === "bottom");
                     const IconComp = h.icon;
                     return (
                       <button
@@ -3915,17 +4088,20 @@ function FlowchartCanvas({
                     <span>Ke Sisi (Shape Tujuan)</span>
                   </span>
                   <span className="text-[10px] text-muted-foreground font-mono uppercase">
-                    {selectedEdge.targetHandle || "top"}
+                    {(selectedEdge.targetHandle || "top-target").replace("-target", "")}
                   </span>
                 </label>
                 <div className="grid grid-cols-4 gap-1.5">
                   {[
-                    { id: "top", label: "Atas", icon: ArrowUp },
-                    { id: "right", label: "Kanan", icon: ArrowRight },
-                    { id: "bottom", label: "Bawah", icon: ArrowDown },
-                    { id: "left", label: "Kiri", icon: ArrowLeft },
+                    { id: "top-target", base: "top", label: "Atas", icon: ArrowUp },
+                    { id: "right-target", base: "right", label: "Kanan", icon: ArrowRight },
+                    { id: "bottom-target", base: "bottom", label: "Bawah", icon: ArrowDown },
+                    { id: "left-target", base: "left", label: "Kiri", icon: ArrowLeft },
                   ].map((h) => {
-                    const isCur = (selectedEdge.targetHandle || "top") === h.id;
+                    const isCur =
+                      selectedEdge.targetHandle === h.id ||
+                      selectedEdge.targetHandle === h.base ||
+                      (!selectedEdge.targetHandle && h.base === "top");
                     const IconComp = h.icon;
                     return (
                       <button
